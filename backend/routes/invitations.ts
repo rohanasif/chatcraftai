@@ -1,7 +1,7 @@
 import express, { RequestHandler } from "express";
 import { PrismaClient } from "@prisma/client";
 import { EmailService } from "../services/emailService";
-import { authenticateToken } from "../middleware/auth";
+import { authenticateToken, AuthenticatedRequest } from "../middleware/auth";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 // Send group invitations (admin only)
 const sendInvitationsHandler: RequestHandler = async (req, res) => {
   const { groupId, inviteeEmails } = req.body;
-  const { userId } = req.user!;
+  const userId = (req as AuthenticatedRequest).user?.userId;
 
   try {
     // Check if user is admin and group creator

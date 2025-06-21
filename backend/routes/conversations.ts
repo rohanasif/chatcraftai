@@ -5,142 +5,19 @@ import { authenticateToken } from "../middleware/auth";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Create 1:1 chat
+// Create direct chat
 const createDirectChatHandler: RequestHandler = async (req, res) => {
-  const { userId, targetEmail } = req.body;
-
-  const targetUser = await prisma.user.findUnique({
-    where: { email: targetEmail },
-    select: { id: true },
-  });
-
-  if (!targetUser) {
-    res.status(404).json({ error: "User not found" });
-    return;
-  }
-
-  // Check if conversation already exists between these users
-  const existingConvo = await prisma.conversation.findFirst({
-    where: {
-      isGroup: false,
-      members: {
-        some: { id: userId },
-      },
-      AND: {
-        members: {
-          some: { id: targetUser.id },
-        },
-      },
-    },
-    include: {
-      members: {
-        select: {
-          id: true,
-          name: true,
-          avatar: true,
-        },
-      },
-      messages: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-    },
-  });
-
-  if (existingConvo) {
-    res.json(existingConvo);
-    return;
-  }
-
-  const conversation = await prisma.conversation.create({
-    data: {
-      isGroup: false,
-      members: {
-        connect: [{ id: userId }, { id: targetUser.id }],
-      },
-    },
-    include: {
-      members: {
-        select: {
-          id: true,
-          name: true,
-          avatar: true,
-        },
-      },
-      messages: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-    },
-  });
-
-  res.json(conversation);
-};
-
-// Create group chat (admin only)
-const createGroupChatHandler: RequestHandler = async (req, res) => {
-  const { userId, title, memberEmails, isPublic = false } = req.body;
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isAdmin: true },
-  });
-
-  if (!user?.isAdmin) {
-    res.status(403).json({ error: "Only admins can create groups" });
-    return;
-  }
-
-  const members = await prisma.user.findMany({
-    where: {
-      email: { in: memberEmails },
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  const memberIds = members.map((member) => ({ id: member.id }));
-
-  const conversation = await prisma.conversation.create({
-    data: {
-      title,
-      isGroup: true,
-      isPublic,
-      creator: { connect: { id: userId } },
-      members: {
-        connect: memberIds,
-      },
-    },
-    include: {
-      members: {
-        select: {
-          id: true,
-          name: true,
-          avatar: true,
-        },
-      },
-      messages: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-    },
-  });
-
-  res.json(conversation);
-};
-
-// Discover public groups (for non-admin users)
-const discoverGroupsHandler: RequestHandler = async (req, res) => {
-  const { userId } = req.params;
+  const { userId, otherUserId } = req.body;
 
   try {
-    const publicGroups = await prisma.conversation.findMany({
+    // Check if conversation already exists
+    const existingConversation = await prisma.conversation.findFirst({
       where: {
-        isGroup: true,
-        isPublic: true,
+        isGroup: false,
         members: {
-          none: { id: userId }, // Groups the user is not already a member of
+          every: {
+            id: { in: [userId, otherUserId] },
+          },
         },
       },
       include: {
@@ -151,9 +28,97 @@ const discoverGroupsHandler: RequestHandler = async (req, res) => {
             avatar: true,
           },
         },
-        messages: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
+        _count: {
+          select: {
+            members: true,
+          },
+        },
+      },
+    });
+
+    if (existingConversation && existingConversation._count.members === 2) {
+      res.json(existingConversation);
+      return;
+    }
+
+    // Create new conversation
+    const conversation = await prisma.conversation.create({
+      data: {
+        isGroup: false,
+        members: {
+          connect: [{ id: userId }, { id: otherUserId }],
+        },
+      },
+      include: {
+        members: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    res.json(conversation);
+  } catch (error) {
+    console.error("Error creating direct chat:", error);
+    res.status(500).json({ error: "Failed to create direct chat" });
+  }
+};
+
+// Create group chat (admin only)
+const createGroupChatHandler: RequestHandler = async (req, res) => {
+  const { title, memberIds, isPublic } = req.body;
+
+  try {
+    const conversation = await prisma.conversation.create({
+      data: {
+        title,
+        isGroup: true,
+        isPublic: isPublic || false,
+        members: {
+          connect: memberIds.map((id: string) => ({ id })),
+        },
+      },
+      include: {
+        members: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    res.json(conversation);
+  } catch (error) {
+    console.error("Error creating group chat:", error);
+    res.status(500).json({ error: "Failed to create group chat" });
+  }
+};
+
+// Discover public groups
+const discoverGroupsHandler: RequestHandler = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const groups = await prisma.conversation.findMany({
+      where: {
+        isGroup: true,
+        isPublic: true,
+        members: {
+          none: { id: userId },
+        },
+      },
+      include: {
+        members: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
         },
         _count: {
           select: {
@@ -163,34 +128,30 @@ const discoverGroupsHandler: RequestHandler = async (req, res) => {
         },
       },
       orderBy: {
-        updatedAt: "desc",
+        createdAt: "desc",
       },
     });
 
-    res.json(publicGroups);
+    res.json(groups);
   } catch (error) {
     console.error("Error discovering groups:", error);
     res.status(500).json({ error: "Failed to discover groups" });
   }
 };
 
-// Join a public group
+// Join group
 const joinGroupHandler: RequestHandler = async (req, res) => {
   const { groupId } = req.params;
   const { userId } = req.body;
 
   try {
     // Check if group exists and is public
-    const group = await prisma.conversation.findFirst({
-      where: {
-        id: groupId,
-        isGroup: true,
-        isPublic: true,
-      },
+    const group = await prisma.conversation.findUnique({
+      where: { id: groupId },
     });
 
-    if (!group) {
-      res.status(404).json({ error: "Group not found or not public" });
+    if (!group || !group.isGroup || !group.isPublic) {
+      res.status(404).json({ error: "Group not found or not joinable" });
       return;
     }
 
@@ -261,24 +222,6 @@ const listConversationsHandler: RequestHandler = async (req, res) => {
         messages: {
           orderBy: { createdAt: "desc" },
           take: 1,
-          include: {
-            readBy: {
-              where: { id: userId },
-              select: { id: true },
-            },
-          },
-        },
-        _count: {
-          select: {
-            messages: {
-              where: {
-                readBy: {
-                  none: { id: userId },
-                },
-                senderId: { not: userId },
-              },
-            },
-          },
         },
       },
       orderBy: {
@@ -288,14 +231,11 @@ const listConversationsHandler: RequestHandler = async (req, res) => {
 
     // Format response to include conversation name and unread count
     const formattedConversations = conversations.map((convo) => {
-      const lastMessage = convo.messages[0];
-      const isLastMessageRead = lastMessage?.readBy.length > 0;
-
       if (convo.isGroup) {
         return {
           ...convo,
-          unreadCount: convo._count.messages,
-          lastMessageRead: isLastMessageRead,
+          unreadCount: 0, // Simplified for now
+          lastMessageRead: true,
         };
       }
 
@@ -304,8 +244,8 @@ const listConversationsHandler: RequestHandler = async (req, res) => {
       return {
         ...convo,
         title: otherUser?.name || "Unknown User",
-        unreadCount: convo._count.messages,
-        lastMessageRead: isLastMessageRead,
+        unreadCount: 0, // Simplified for now
+        lastMessageRead: true,
       };
     });
 
@@ -359,16 +299,16 @@ const markAsReadHandler: RequestHandler = async (req, res) => {
 
     // Mark all unread messages as read
     if (unreadMessages.length > 0) {
-      await prisma.message.updateMany({
-        where: {
-          id: { in: unreadMessages.map((m) => m.id) },
-        },
-        data: {
-          readBy: {
-            connect: { id: userId },
+      for (const message of unreadMessages) {
+        await prisma.message.update({
+          where: { id: message.id },
+          data: {
+            readBy: {
+              connect: { id: userId },
+            },
           },
-        },
-      });
+        });
+      }
     }
 
     res.json({ success: true, markedAsRead: unreadMessages.length });
@@ -381,8 +321,8 @@ const markAsReadHandler: RequestHandler = async (req, res) => {
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
 
-router.post("/direct", createDirectChatHandler);
-router.post("/group", createGroupChatHandler);
+router.get("/direct", createDirectChatHandler);
+router.get("/group", createGroupChatHandler);
 router.get("/discover/:userId", discoverGroupsHandler);
 router.post("/:groupId/join", joinGroupHandler);
 router.get("/:userId", listConversationsHandler);

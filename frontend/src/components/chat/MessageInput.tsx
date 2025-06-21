@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "../ui/Button";
-import { debounce } from "../../utils";
 
 interface MessageInputProps {
   onSendMessage: (content: string) => void;
@@ -25,13 +24,21 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [grammarErrors, setGrammarErrors] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const grammarTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Debounced typing indicator
-  const debouncedTyping = useRef(
-    debounce((isTyping: boolean) => {
-      onTyping(isTyping);
-    }, 500),
-  ).current;
+  const debouncedTyping = useCallback(
+    (isTyping: boolean) => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      typingTimeoutRef.current = setTimeout(() => {
+        onTyping(isTyping);
+      }, 500);
+    },
+    [onTyping],
+  );
 
   useEffect(() => {
     if (message.trim()) {
@@ -71,19 +78,24 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   // Mock grammar checking - in real app this would call AI service
-  const checkGrammar = debounce(async (text: string) => {
-    if (text.length < 10) return;
+  const checkGrammar = useCallback((text: string) => {
+    if (grammarTimeoutRef.current) {
+      clearTimeout(grammarTimeoutRef.current);
+    }
+    grammarTimeoutRef.current = setTimeout(async () => {
+      if (text.length < 10) return;
 
-    // Mock grammar errors
-    const mockErrors = [];
-    if (text.includes("i am")) {
-      mockErrors.push("i am");
-    }
-    if (text.includes("u ")) {
-      mockErrors.push("u ");
-    }
-    setGrammarErrors(mockErrors);
-  }, 1000);
+      // Mock grammar errors
+      const mockErrors = [];
+      if (text.includes("i am")) {
+        mockErrors.push("i am");
+      }
+      if (text.includes("u ")) {
+        mockErrors.push("u ");
+      }
+      setGrammarErrors(mockErrors);
+    }, 1000);
+  }, []);
 
   useEffect(() => {
     checkGrammar(message);

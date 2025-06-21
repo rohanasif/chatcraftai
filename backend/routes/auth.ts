@@ -2,7 +2,7 @@ import express, { RequestHandler } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
-import { authenticateToken } from "../middleware/auth";
+import { authenticateToken, AuthenticatedRequest } from "../middleware/auth";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -89,8 +89,9 @@ const logoutHandler: RequestHandler = async (req, res) => {
 // Get current user (protected route)
 const getCurrentUserHandler: RequestHandler = async (req, res) => {
   try {
+    const userId = (req as AuthenticatedRequest).user?.userId;
     const user = await prisma.user.findUnique({
-      where: { id: req.user?.userId },
+      where: { id: userId },
       select: {
         id: true,
         email: true,

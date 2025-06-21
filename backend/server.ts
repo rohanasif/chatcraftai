@@ -28,7 +28,7 @@ app.use("/api/messages", messagesRouter);
 app.use("/api/invitations", invitationsRouter);
 
 // Health check endpoint
-app.get("/api/health", (req, res) => {
+app.get("/health", (req, res) => {
   res.status(200).json({ status: "healthy" });
 });
 

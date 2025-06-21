@@ -24,7 +24,8 @@ export class AIService {
     const cached = await redis.get(cacheKey);
 
     if (cached) {
-      return cached;
+      const cachedStr = typeof cached === "string" ? cached : cached.toString();
+      return cachedStr;
     }
 
     const response = await openai.chat.completions.create({
@@ -57,7 +58,8 @@ export class AIService {
     const cached = await redis.get(cacheKey);
 
     if (cached) {
-      return JSON.parse(cached);
+      const cachedStr = typeof cached === "string" ? cached : cached.toString();
+      return JSON.parse(cachedStr);
     }
 
     const response = await openai.chat.completions.create({
@@ -95,7 +97,8 @@ export class AIService {
     const cached = await redis.get(cacheKey);
 
     if (cached) {
-      return JSON.parse(cached);
+      const cachedStr = typeof cached === "string" ? cached : cached.toString();
+      return JSON.parse(cachedStr);
     }
 
     const response = await openai.chat.completions.create({

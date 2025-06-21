@@ -6,7 +6,7 @@
     "prepare": "cd .. && husky backend/.husky",
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "nodemon server.ts",
+    "dev": "nodemon",
     "watch": "tsc -w",
     "test": "jest --passWithNoTests",
     "prisma:generate": "prisma generate",
