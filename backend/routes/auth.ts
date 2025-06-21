@@ -2,6 +2,7 @@ import express, { RequestHandler } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
+import { authenticateToken } from "../middleware/auth";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -79,7 +80,44 @@ const loginHandler: RequestHandler = async (req, res) => {
   });
 };
 
+// Logout
+const logoutHandler: RequestHandler = async (req, res) => {
+  res.clearCookie("token");
+  res.json({ success: true });
+};
+
+// Get current user (protected route)
+const getCurrentUserHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user?.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar: true,
+        isAdmin: true,
+      },
+    });
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    res.json({ user });
+  } catch (error) {
+    console.error("Error getting current user:", error);
+    res.status(500).json({ error: "Failed to get current user" });
+  }
+};
+
+// Public routes
 router.post("/register", registerHandler);
 router.post("/login", loginHandler);
+router.post("/logout", logoutHandler);
+
+// Protected routes
+router.get("/me", authenticateToken, getCurrentUserHandler);
 
 export default router;

@@ -11,7 +11,8 @@
     "test": "jest --passWithNoTests",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "prisma:seed": "ts-node scripts/seed.ts"
   },
   "lint-staged": {
     "*.{js,ts}": [

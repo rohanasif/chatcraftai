@@ -17,6 +17,7 @@ model User {
   createdConversations Conversation[] @relation("ConversationCreator")
   memberConversations  Conversation[] @relation("ConversationMembers")
   sentMessages         Message[]
+  readMessages         Message[]      @relation("MessageReadBy")
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 }
@@ -25,6 +26,7 @@ model Conversation {
   id        String    @id @default(uuid())
   title     String?
   isGroup   Boolean   @default(false)
+  isPublic  Boolean   @default(false) // For group discovery
   creator   User?     @relation("ConversationCreator", fields: [creatorId], references: [id])
   creatorId String?
   members   User[]    @relation("ConversationMembers")
@@ -40,6 +42,7 @@ model Message {
   senderId       String
   conversation   Conversation @relation(fields: [conversationId], references: [id])
   conversationId String
+  readBy         User[]       @relation("MessageReadBy")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 }

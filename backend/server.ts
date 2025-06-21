@@ -6,6 +6,7 @@ import { WsServer } from "./wsServer";
 import authRouter from "./routes/auth";
 import conversationsRouter from "./routes/conversations";
 import messagesRouter from "./routes/messages";
+import invitationsRouter from "./routes/invitations";
 
 const app = express();
 const server = http.createServer(app);
@@ -24,6 +25,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRouter);
 app.use("/api/conversations", conversationsRouter);
 app.use("/api/messages", messagesRouter);
+app.use("/api/invitations", invitationsRouter);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
