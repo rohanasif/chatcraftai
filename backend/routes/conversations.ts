@@ -112,7 +112,8 @@ const discoverGroupsHandler: RequestHandler = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(500).json({ error: "Failed to discover groups" });
+      res.status(500).json({ error: "Failed to discover groups" });
+      return;
     }
 
     const groups = await prisma.conversation.findMany({
@@ -224,7 +225,8 @@ const listConversationsHandler: RequestHandler = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(500).json({ error: "Failed to fetch conversations" });
+      res.status(500).json({ error: "Failed to fetch conversations" });
+      return;
     }
 
     const conversations = await prisma.conversation.findMany({
@@ -290,7 +292,8 @@ const getUnreadCountHandler: RequestHandler = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(500).json({ error: "Failed to get unread count" });
+      res.status(500).json({ error: "Failed to get unread count" });
+      return;
     }
 
     // Get total unread count across all conversations for this user
@@ -301,7 +304,6 @@ const getUnreadCountHandler: RequestHandler = async (req, res) => {
             some: { id: userId },
           },
         },
-        senderId: { not: userId },
         readBy: {
           none: { id: userId },
         },
@@ -328,7 +330,8 @@ const markAsReadHandler: RequestHandler = async (req, res) => {
     });
 
     if (!conversation) {
-      return res.status(500).json({ error: "Failed to mark as read" });
+      res.status(500).json({ error: "Failed to mark as read" });
+      return;
     }
 
     // Get all unread messages in the conversation

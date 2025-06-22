@@ -19,7 +19,8 @@ const getMessagesHandler: RequestHandler = async (req, res) => {
     });
 
     if (!conversation) {
-      return res.status(500).json({ error: "Failed to fetch messages" });
+      res.status(500).json({ error: "Failed to fetch messages" });
+      return;
     }
 
     let cursorFilter = {};
@@ -75,7 +76,8 @@ const getAnalyticsHandler: RequestHandler = async (req, res) => {
     });
 
     if (!conversation) {
-      return res.status(500).json({ error: "Failed to fetch analytics" });
+      res.status(500).json({ error: "Failed to fetch analytics" });
+      return;
     }
 
     // Get all messages for the conversation
@@ -190,7 +192,8 @@ const getReplySuggestionsHandler: RequestHandler = async (req, res) => {
     });
 
     if (!conversation) {
-      return res.status(500).json({ error: "Failed to get reply suggestions" });
+      res.status(500).json({ error: "Failed to get reply suggestions" });
+      return;
     }
 
     // Get recent messages for context
