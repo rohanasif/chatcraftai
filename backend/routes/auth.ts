@@ -1,15 +1,15 @@
 import express, { RequestHandler } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { PrismaClient } from "@prisma/client";
+import { getPrismaClient } from "../lib/prisma";
 import { authenticateToken, AuthenticatedRequest } from "../middleware/auth";
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Register
 const registerHandler: RequestHandler = async (req, res) => {
   const { email, password, name, avatar, isAdmin } = req.body;
+  const prisma = await getPrismaClient();
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -46,6 +46,13 @@ const registerHandler: RequestHandler = async (req, res) => {
 // Login
 const loginHandler: RequestHandler = async (req, res) => {
   const { email, password } = req.body;
+  const prisma = await getPrismaClient();
+
+  // Check if credentials are provided
+  if (!email || !password) {
+    res.status(401).json({ error: "Invalid credentials" });
+    return;
+  }
 
   const user = await prisma.user.findUnique({
     where: { email },
@@ -82,7 +89,10 @@ const loginHandler: RequestHandler = async (req, res) => {
 
 // Logout
 const logoutHandler: RequestHandler = async (req, res) => {
-  res.clearCookie("token");
+  res.clearCookie("token", {
+    httpOnly: true,
+    maxAge: 0,
+  });
   res.json({ success: true });
 };
 
@@ -90,6 +100,8 @@ const logoutHandler: RequestHandler = async (req, res) => {
 const getCurrentUserHandler: RequestHandler = async (req, res) => {
   try {
     const userId = (req as AuthenticatedRequest).user?.userId;
+    const prisma = await getPrismaClient();
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {

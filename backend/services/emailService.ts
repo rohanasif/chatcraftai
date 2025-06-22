@@ -1,6 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { getPrismaClient } from "../lib/prisma";
 
 export class EmailService {
   static async sendGroupInvitation(
@@ -44,12 +42,7 @@ export class EmailService {
     valid: boolean;
   }> {
     try {
-      // In a real implementation, you would:
-      // 1. Decode and validate the JWT token
-      // 2. Check if the invitation is still valid
-      // 3. Verify the group exists and is accepting invitations
-
-      // For now, we'll simulate token validation
+      // Decode the token
       const decoded = this.decodeInvitationToken(token);
 
       if (!decoded) {
@@ -57,13 +50,19 @@ export class EmailService {
       }
 
       // Check if group exists
+      const prisma = await getPrismaClient();
       const group = await prisma.conversation.findUnique({
         where: { id: decoded.groupId },
         select: { id: true, title: true, isGroup: true },
       });
 
       if (!group || !group.isGroup) {
-        return { groupId: "", email: "", valid: false };
+        // Return decoded values but mark as invalid
+        return {
+          groupId: decoded.groupId,
+          email: decoded.email,
+          valid: false,
+        };
       }
 
       return {
@@ -72,7 +71,7 @@ export class EmailService {
         valid: true,
       };
     } catch (error) {
-      console.error("Failed to validate invitation token:", error);
+      console.error("Failed to decode invitation token:", error);
       return { groupId: "", email: "", valid: false };
     }
   }
@@ -93,11 +92,34 @@ export class EmailService {
     timestamp: number;
   } | null {
     try {
+      // First, validate that the token is valid base64
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(token)) {
+        throw new Error("Invalid base64 token");
+      }
+
       const decoded = Buffer.from(token, "base64").toString();
-      const [groupId, email, timestamp] = decoded.split(":");
+      const parts = decoded.split(":");
+
+      // Check if we have all required parts
+      if (parts.length !== 3) {
+        return null;
+      }
+
+      const [groupId, email, timestampStr] = parts;
+
+      // Validate that groupId and email are not empty
+      if (!groupId || !email) {
+        return null;
+      }
+
+      // Validate timestamp is a valid number
+      const timestamp = parseInt(timestampStr);
+      if (isNaN(timestamp)) {
+        return null;
+      }
 
       // Check if token is not expired (24 hours)
-      const tokenAge = Date.now() - parseInt(timestamp);
+      const tokenAge = Date.now() - timestamp;
       const maxAge = 24 * 60 * 60 * 1000; // 24 hours
 
       if (tokenAge > maxAge) {
@@ -107,7 +129,7 @@ export class EmailService {
       return {
         groupId,
         email,
-        timestamp: parseInt(timestamp),
+        timestamp,
       };
     } catch (error) {
       console.error("Failed to decode invitation token:", error);

@@ -1,15 +1,39 @@
 import OpenAI from "openai";
 import { createClient } from "redis";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_KEY,
-});
+// Lazy OpenAI initialization
+let openai: OpenAI | null = null;
 
-const redis = createClient({
-  url: process.env.REDIS_URL,
-});
+function getOpenAIClient() {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_KEY,
+      dangerouslyAllowBrowser: process.env.NODE_ENV === "test",
+    });
+  }
+  return openai;
+}
 
-redis.connect();
+// Lazy Redis connection
+let redis: ReturnType<typeof createClient> | null = null;
+
+async function getRedisClient() {
+  if (!redis) {
+    redis = createClient({
+      url: process.env.REDIS_URL,
+    });
+    await redis.connect();
+  }
+  return redis;
+}
+
+// Cleanup function for tests
+export async function cleanupRedis() {
+  if (redis) {
+    await redis.quit();
+    redis = null;
+  }
+}
 
 interface Message {
   sender: {
@@ -20,15 +44,17 @@ interface Message {
 
 export class AIService {
   static async correctGrammar(text: string): Promise<string> {
+    const redisClient = await getRedisClient();
     const cacheKey = `grammar:${text}`;
-    const cached = await redis.get(cacheKey);
+    const cached = await redisClient.get(cacheKey);
 
     if (cached) {
       const cachedStr = typeof cached === "string" ? cached : cached.toString();
       return cachedStr;
     }
 
-    const response = await openai.chat.completions.create({
+    const openaiClient = getOpenAIClient();
+    const response = await openaiClient.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
@@ -45,24 +71,26 @@ export class AIService {
     });
 
     const corrected = response.choices[0].message.content || text;
-    await redis.set(cacheKey, corrected, { EX: 3600 }); // Cache for 1 hour
+    await redisClient.set(cacheKey, corrected, { EX: 3600 }); // Cache for 1 hour
 
     return corrected;
   }
 
   static async suggestReplies(messages: Message[]): Promise<string[]> {
+    const redisClient = await getRedisClient();
     const context = messages
       .map((m) => `${m.sender.name}: ${m.content}`)
       .join("\n");
     const cacheKey = `replies:${context}`;
-    const cached = await redis.get(cacheKey);
+    const cached = await redisClient.get(cacheKey);
 
     if (cached) {
       const cachedStr = typeof cached === "string" ? cached : cached.toString();
       return JSON.parse(cachedStr);
     }
 
-    const response = await openai.chat.completions.create({
+    const openaiClient = getOpenAIClient();
+    const response = await openaiClient.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
@@ -82,7 +110,7 @@ export class AIService {
     const content = response.choices[0].message.content || '{"replies":[]}';
     const replies = JSON.parse(content).replies || [];
 
-    await redis.set(cacheKey, JSON.stringify(replies), { EX: 3600 });
+    await redisClient.set(cacheKey, JSON.stringify(replies), { EX: 3600 });
 
     return replies;
   }
@@ -90,18 +118,20 @@ export class AIService {
   static async summarizeConversation(
     messages: Message[],
   ): Promise<{ summary: string; sentiment: string[] }> {
+    const redisClient = await getRedisClient();
     const context = messages
       .map((m) => `${m.sender.name}: ${m.content}`)
       .join("\n");
     const cacheKey = `summary:${context}`;
-    const cached = await redis.get(cacheKey);
+    const cached = await redisClient.get(cacheKey);
 
     if (cached) {
       const cachedStr = typeof cached === "string" ? cached : cached.toString();
       return JSON.parse(cachedStr);
     }
 
-    const response = await openai.chat.completions.create({
+    const openaiClient = getOpenAIClient();
+    const response = await openaiClient.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
@@ -122,7 +152,7 @@ export class AIService {
       response.choices[0].message.content || '{"summary":"","sentiment":[]}';
     const result = JSON.parse(content);
 
-    await redis.set(cacheKey, JSON.stringify(result), { EX: 86400 }); // Cache for 24 hours
+    await redisClient.set(cacheKey, JSON.stringify(result), { EX: 86400 }); // Cache for 24 hours
 
     return result;
   }

@@ -1,0 +1,53 @@
+{
+  "name": "chatcraftai-backend-tests",
+  "version": "1.0.0",
+  "description": "Test suite for ChatCraftAI backend",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --detectOpenHandles",
+    "test:frontend": "node --experimental-vm-modules node_modules/.bin/jest --testPathPatterns=src/frontend",
+    "test:backend": "node --experimental-vm-modules node_modules/.bin/jest --testPathPatterns=src/(routes|middleware|services|integration)",
+    "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage"
+  },
+  "keywords": [
+    "testing",
+    "jest",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.3",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.14",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.10.2",
+    "@types/supertest": "^6.0.2",
+    "chart.js": "^4.5.0",
+    "dotenv": "^16.4.7",
+    "express": "^5.0.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jsonwebtoken": "^9.0.2",
+    "pglite-prisma-adapter": "^0.6.1",
+    "prisma": "^6.10.1",
+    "react-chartjs-2": "^5.3.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.10.1",
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "node-fetch": "^2.7.0",
+    "openai": "^5.6.0",
+    "redis": "^5.5.6"
+  }
+}

@@ -1,10 +1,9 @@
 import express, { RequestHandler } from "express";
-import { PrismaClient } from "@prisma/client";
+import { getPrismaClient } from "../lib/prisma";
 import { authenticateToken } from "../middleware/auth";
 import { AIService } from "../aiService";
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Get messages for a conversation
 const getMessagesHandler: RequestHandler = async (req, res) => {
@@ -12,10 +11,30 @@ const getMessagesHandler: RequestHandler = async (req, res) => {
   const { limit = 50, cursor } = req.query;
 
   try {
+    const prisma = await getPrismaClient();
+
+    // First check if conversation exists
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+    });
+
+    if (!conversation) {
+      return res.status(500).json({ error: "Failed to fetch messages" });
+    }
+
+    let cursorFilter = {};
+    if (cursor) {
+      // Expect cursor to be an ISO string or timestamp
+      const cursorDate = new Date(cursor as string);
+      if (!isNaN(cursorDate.getTime())) {
+        cursorFilter = { createdAt: { lt: cursorDate } };
+      }
+    }
+
     const messages = await prisma.message.findMany({
       where: {
         conversationId,
-        ...(cursor ? { id: { lt: cursor as string } } : {}),
+        ...cursorFilter,
       },
       include: {
         sender: {
@@ -37,8 +56,7 @@ const getMessagesHandler: RequestHandler = async (req, res) => {
         createdAt: "desc",
       },
     });
-
-    res.json(messages.reverse()); // Return oldest first
+    res.json(messages.reverse());
   } catch (error) {
     console.error("Failed to fetch messages:", error);
     res.status(500).json({ error: "Failed to fetch messages" });
@@ -48,8 +66,18 @@ const getMessagesHandler: RequestHandler = async (req, res) => {
 // Get conversation analytics with AI integration
 const getAnalyticsHandler: RequestHandler = async (req, res) => {
   const { conversationId } = req.params;
-
   try {
+    const prisma = await getPrismaClient();
+
+    // First check if conversation exists
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+    });
+
+    if (!conversation) {
+      return res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+
     // Get all messages for the conversation
     const messages = await prisma.message.findMany({
       where: { conversationId },
@@ -69,7 +97,8 @@ const getAnalyticsHandler: RequestHandler = async (req, res) => {
     // Basic stats
     const messageCount = messages.length;
     const totalWords = messages.reduce((count, message) => {
-      return count + (message.content?.split(/\s+/).length || 0);
+      const words = message.content?.trim().split(/\s+/) || [];
+      return count + words.length;
     }, 0);
 
     // Check if conversation has been inactive for 1 hour
@@ -122,6 +151,7 @@ const markMessageAsReadHandler: RequestHandler = async (req, res) => {
   const { userId } = req.body;
 
   try {
+    const prisma = await getPrismaClient();
     const message = await prisma.message.update({
       where: { id: messageId },
       data: {
@@ -152,6 +182,17 @@ const getReplySuggestionsHandler: RequestHandler = async (req, res) => {
   const { limit = 5 } = req.query;
 
   try {
+    const prisma = await getPrismaClient();
+
+    // First check if conversation exists
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+    });
+
+    if (!conversation) {
+      return res.status(500).json({ error: "Failed to get reply suggestions" });
+    }
+
     // Get recent messages for context
     const recentMessages = await prisma.message.findMany({
       where: { conversationId },

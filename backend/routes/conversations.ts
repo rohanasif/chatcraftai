@@ -1,13 +1,13 @@
 import express, { RequestHandler } from "express";
-import { PrismaClient } from "@prisma/client";
+import { getPrismaClient } from "../lib/prisma";
 import { authenticateToken } from "../middleware/auth";
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Create direct chat
 const createDirectChatHandler: RequestHandler = async (req, res) => {
   const { userId, otherUserId } = req.body;
+  const prisma = await getPrismaClient();
 
   try {
     // Check if conversation already exists
@@ -70,6 +70,7 @@ const createDirectChatHandler: RequestHandler = async (req, res) => {
 // Create group chat (admin only)
 const createGroupChatHandler: RequestHandler = async (req, res) => {
   const { title, memberIds, isPublic } = req.body;
+  const prisma = await getPrismaClient();
 
   try {
     const conversation = await prisma.conversation.create({
@@ -102,8 +103,18 @@ const createGroupChatHandler: RequestHandler = async (req, res) => {
 // Discover public groups
 const discoverGroupsHandler: RequestHandler = async (req, res) => {
   const { userId } = req.params;
+  const prisma = await getPrismaClient();
 
   try {
+    // First check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(500).json({ error: "Failed to discover groups" });
+    }
+
     const groups = await prisma.conversation.findMany({
       where: {
         isGroup: true,
@@ -143,6 +154,7 @@ const discoverGroupsHandler: RequestHandler = async (req, res) => {
 const joinGroupHandler: RequestHandler = async (req, res) => {
   const { groupId } = req.params;
   const { userId } = req.body;
+  const prisma = await getPrismaClient();
 
   try {
     // Check if group exists and is public
@@ -203,8 +215,18 @@ const joinGroupHandler: RequestHandler = async (req, res) => {
 // List conversations for user with unread counts
 const listConversationsHandler: RequestHandler = async (req, res) => {
   const { userId } = req.params;
+  const prisma = await getPrismaClient();
 
   try {
+    // First check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+
     const conversations = await prisma.conversation.findMany({
       where: {
         members: {
@@ -252,22 +274,36 @@ const listConversationsHandler: RequestHandler = async (req, res) => {
     res.json(formattedConversations);
   } catch (error) {
     console.error("Error listing conversations:", error);
-    res.status(500).json({ error: "Failed to list conversations" });
+    res.status(500).json({ error: "Failed to fetch conversations" });
   }
 };
 
-// Get unread count for a conversation
+// Get unread count for a user (all conversations) or specific conversation
 const getUnreadCountHandler: RequestHandler = async (req, res) => {
-  const { conversationId } = req.params;
-  const { userId } = req.query;
+  const { userId } = req.params;
+  const prisma = await getPrismaClient();
 
   try {
+    // First check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(500).json({ error: "Failed to get unread count" });
+    }
+
+    // Get total unread count across all conversations for this user
     const unreadCount = await prisma.message.count({
       where: {
-        conversationId,
-        senderId: { not: userId as string },
+        conversation: {
+          members: {
+            some: { id: userId },
+          },
+        },
+        senderId: { not: userId },
         readBy: {
-          none: { id: userId as string },
+          none: { id: userId },
         },
       },
     });
@@ -283,8 +319,18 @@ const getUnreadCountHandler: RequestHandler = async (req, res) => {
 const markAsReadHandler: RequestHandler = async (req, res) => {
   const { conversationId } = req.params;
   const { userId } = req.body;
+  const prisma = await getPrismaClient();
 
   try {
+    // First check if conversation exists
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+    });
+
+    if (!conversation) {
+      return res.status(500).json({ error: "Failed to mark as read" });
+    }
+
     // Get all unread messages in the conversation
     const unreadMessages = await prisma.message.findMany({
       where: {
@@ -321,12 +367,12 @@ const markAsReadHandler: RequestHandler = async (req, res) => {
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
 
-router.get("/direct", createDirectChatHandler);
-router.get("/group", createGroupChatHandler);
+router.post("/direct", createDirectChatHandler);
+router.post("/group", createGroupChatHandler);
 router.get("/discover/:userId", discoverGroupsHandler);
 router.post("/:groupId/join", joinGroupHandler);
 router.get("/:userId", listConversationsHandler);
-router.get("/:conversationId/unread", getUnreadCountHandler);
+router.get("/:userId/unread", getUnreadCountHandler);
 router.post("/:conversationId/read", markAsReadHandler);
 
 export default router;

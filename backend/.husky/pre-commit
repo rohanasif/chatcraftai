@@ -1,6 +1,6 @@
 cd backend
 npx lint-staged
-npm run test
 cd ../frontend
 npx lint-staged
-npm run test
+cd ../tests
+npm test
