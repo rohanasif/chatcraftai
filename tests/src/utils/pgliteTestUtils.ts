@@ -138,12 +138,20 @@ export async function getPrismaClient(): Promise<PrismaClient> {
 
 export async function cleanupPGlite(): Promise<void> {
   if (prisma) {
-    await prisma.$disconnect();
+    try {
+      await prisma.$disconnect();
+    } catch (error) {
+      console.warn("Error disconnecting Prisma client:", error);
+    }
     prisma = null;
   }
 
   if (pglite) {
-    await pglite.close();
+    try {
+      await pglite.close();
+    } catch (error) {
+      console.warn("Error closing PGlite:", error);
+    }
     pglite = null;
   }
 
@@ -154,13 +162,39 @@ export async function cleanupPGlite(): Promise<void> {
       const stats = fs.statSync(dbPath);
       if (stats.isDirectory()) {
         fs.rmSync(dbPath, { recursive: true, force: true });
+        console.log(`🧹 Cleaned up test database directory: ${dbPath}`);
       } else {
         fs.unlinkSync(dbPath);
+        console.log(`🧹 Cleaned up test database file: ${dbPath}`);
       }
     } catch (error) {
       console.warn("Could not delete test database directory:", error);
     }
     dbPath = null;
+  }
+
+  // Also clean up any other test database files that might have been created
+  try {
+    const currentDir = process.cwd();
+    const items = fs.readdirSync(currentDir, { withFileTypes: true });
+
+    for (const item of items) {
+      if (item.name.startsWith("test-db-") || item.name.startsWith("pglite-")) {
+        const itemPath = path.join(currentDir, item.name);
+        try {
+          if (item.isDirectory()) {
+            fs.rmSync(itemPath, { recursive: true, force: true });
+          } else {
+            fs.unlinkSync(itemPath);
+          }
+          console.log(`🧹 Cleaned up test artifact: ${item.name}`);
+        } catch (error) {
+          console.warn(`Could not clean up ${item.name}:`, error);
+        }
+      }
+    }
+  } catch (error) {
+    console.warn("Error during additional cleanup:", error);
   }
 }
 

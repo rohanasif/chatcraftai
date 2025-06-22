@@ -4,11 +4,13 @@
   "description": "Test suite for ChatCraftAI backend",
   "main": "index.js",
   "scripts": {
-    "test": "node --experimental-vm-modules node_modules/.bin/jest --detectOpenHandles",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --detectOpenHandles && npm run cleanup:db",
     "test:frontend": "node --experimental-vm-modules node_modules/.bin/jest --testPathPatterns=src/frontend",
-    "test:backend": "node --experimental-vm-modules node_modules/.bin/jest --testPathPatterns=src/(routes|middleware|services|integration)",
+    "test:backend": "node --experimental-vm-modules node_modules/.bin/jest --testPathPatterns=src/(routes|middleware|services|integration) && npm run cleanup:db",
     "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
-    "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage"
+    "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage && npm run cleanup:db",
+    "cleanup:db": "node scripts/cleanup-db.js",
+    "cleanup:all": "npm run cleanup:db && rm -rf node_modules/.cache"
   },
   "keywords": [
     "testing",
