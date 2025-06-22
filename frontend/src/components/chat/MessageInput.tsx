@@ -1,14 +1,27 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Button } from "../ui/Button";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Box,
+  TextField,
+  IconButton,
+  Paper,
+  Chip,
+  Typography,
+  CircularProgress,
+} from "@mui/material";
+import {
+  Send as SendIcon,
+  Lightbulb as LightbulbIcon,
+  Close as CloseIcon,
+} from "@mui/icons-material";
 
 interface MessageInputProps {
   onSendMessage: (content: string) => void;
   onTyping: (isTyping: boolean) => void;
   onRequestSuggestions: () => void;
-  suggestions?: string[];
-  isTyping?: boolean;
+  suggestions: string[];
+  isTyping: boolean;
   disabled?: boolean;
 }
 
@@ -16,182 +29,186 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onSendMessage,
   onTyping,
   onRequestSuggestions,
-  suggestions = [],
-  isTyping = false,
+  suggestions,
+  isTyping,
   disabled = false,
 }) => {
   const [message, setMessage] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [grammarErrors, setGrammarErrors] = useState<string[]>([]);
+  const [isComposing, setIsComposing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
-  const grammarTimeoutRef = useRef<NodeJS.Timeout>();
-
-  // Debounced typing indicator
-  const debouncedTyping = useCallback(
-    (isTyping: boolean) => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      typingTimeoutRef.current = setTimeout(() => {
-        onTyping(isTyping);
-      }, 500);
-    },
-    [onTyping],
-  );
-
-  useEffect(() => {
-    if (message.trim()) {
-      debouncedTyping(true);
-    } else {
-      debouncedTyping(false);
-    }
-  }, [message, debouncedTyping]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim() && !disabled) {
       onSendMessage(message.trim());
       setMessage("");
-      setGrammarErrors([]);
       onTyping(false);
-      setShowSuggestions(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
     }
   };
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMessage(value);
+
+    if (value.trim()) {
+      onTyping(true);
+    } else {
+      onTyping(false);
+    }
+  };
+
+  const handleCompositionStart = () => {
+    setIsComposing(true);
+  };
+
+  const handleCompositionEnd = () => {
+    setIsComposing(false);
+  };
+
   const handleSuggestionClick = (suggestion: string) => {
     setMessage(suggestion);
-    setShowSuggestions(false);
-    textareaRef.current?.focus();
+    onTyping(true);
   };
 
-  const handleGrammarCorrection = (original: string, corrected: string) => {
-    setMessage(message.replace(original, corrected));
-    setGrammarErrors(grammarErrors.filter((error) => error !== original));
+  const handleRemoveSuggestion = (index: number) => {
+    // In a real app, you'd remove the suggestion from the backend
+    console.log("Remove suggestion:", index);
   };
 
-  // Mock grammar checking - in real app this would call AI service
-  const checkGrammar = useCallback((text: string) => {
-    if (grammarTimeoutRef.current) {
-      clearTimeout(grammarTimeoutRef.current);
-    }
-    grammarTimeoutRef.current = setTimeout(async () => {
-      if (text.length < 10) return;
-
-      // Mock grammar errors
-      const mockErrors = [];
-      if (text.includes("i am")) {
-        mockErrors.push("i am");
-      }
-      if (text.includes("u ")) {
-        mockErrors.push("u ");
-      }
-      setGrammarErrors(mockErrors);
-    }, 1000);
-  }, []);
-
+  // Auto-resize textarea
   useEffect(() => {
-    checkGrammar(message);
-  }, [message, checkGrammar]);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  }, [message]);
 
   return (
-    <div className="border-t border-gray-200 bg-white p-4">
-      {/* Grammar Suggestions */}
-      {grammarErrors.length > 0 && (
-        <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
-          <p className="text-xs text-yellow-800 mb-1">Grammar suggestions:</p>
-          {grammarErrors.map((error, index) => (
-            <div key={index} className="flex items-center space-x-2 text-xs">
-              <span className="text-yellow-600">&quot;{error}&quot;</span>
-              <span>→</span>
-              <button
-                onClick={() =>
-                  handleGrammarCorrection(
-                    error,
-                    error === "i am" ? "I am" : "you ",
-                  )
-                }
-                className="text-blue-600 hover:underline"
-              >
-                {error === "i am" ? "I am" : "you "}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* AI Reply Suggestions */}
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
-          <p className="text-xs text-blue-800 mb-1">🤖 AI Suggestions:</p>
-          <div className="flex flex-wrap gap-1">
+    <Box
+      sx={{
+        p: 2,
+        borderTop: "1px solid",
+        borderColor: "divider",
+        bgcolor: "background.paper",
+      }}
+    >
+      {/* Suggestions */}
+      {suggestions.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ mb: 1, display: "block" }}
+          >
+            AI Suggestions:
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             {suggestions.map((suggestion, index) => (
-              <button
+              <Chip
                 key={index}
+                label={suggestion}
+                size="small"
+                variant="outlined"
                 onClick={() => handleSuggestionClick(suggestion)}
-                className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded"
-              >
-                {suggestion}
-              </button>
+                onDelete={() => handleRemoveSuggestion(index)}
+                deleteIcon={<CloseIcon />}
+                sx={{
+                  cursor: "pointer",
+                  "&:hover": {
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                  },
+                }}
+              />
             ))}
-          </div>
-        </div>
+          </Box>
+        </Box>
       )}
 
-      {/* Typing Indicator */}
+      {/* Typing indicator */}
       {isTyping && (
-        <div className="mb-2 text-xs text-gray-500">Someone is typing...</div>
+        <Box sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}>
+          <CircularProgress size={16} />
+          <Typography variant="caption" color="text.secondary">
+            Someone is typing...
+          </Typography>
+        </Box>
       )}
 
-      <form onSubmit={handleSubmit} className="flex items-end space-x-2">
-        <div className="flex-1">
-          <textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type a message..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            rows={1}
-            disabled={disabled}
-            style={{
-              minHeight: "40px",
-              maxHeight: "120px",
-            }}
-          />
-        </div>
+      {/* Message input */}
+      <Paper
+        component="form"
+        onSubmit={handleSubmit}
+        elevation={1}
+        sx={{
+          display: "flex",
+          alignItems: "flex-end",
+          gap: 1,
+          p: 1,
+          borderRadius: 3,
+        }}
+      >
+        <TextField
+          ref={textareaRef}
+          fullWidth
+          multiline
+          maxRows={4}
+          value={message}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
+          placeholder="Type a message..."
+          disabled={disabled}
+          variant="standard"
+          InputProps={{
+            disableUnderline: true,
+            style: { fontSize: "0.875rem" },
+          }}
+          sx={{
+            "& .MuiInputBase-root": {
+              minHeight: 40,
+              alignItems: "flex-end",
+            },
+          }}
+        />
 
-        <div className="flex space-x-1">
-          <Button
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          <IconButton
             type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              onRequestSuggestions();
-              setShowSuggestions(!showSuggestions);
-            }}
+            size="small"
+            onClick={onRequestSuggestions}
             disabled={disabled}
+            sx={{ color: "text.secondary" }}
             title="Get AI suggestions"
           >
-            🤖
-          </Button>
+            <LightbulbIcon />
+          </IconButton>
 
-          <Button
+          <IconButton
             type="submit"
-            disabled={!message.trim() || disabled}
-            size="sm"
+            size="small"
+            disabled={!message.trim() || disabled || isComposing}
+            sx={{
+              color: message.trim() ? "primary.main" : "text.disabled",
+              "&:hover": {
+                bgcolor: "primary.main",
+                color: "primary.contrastText",
+              },
+            }}
+            title="Send message"
           >
-            Send
-          </Button>
-        </div>
-      </form>
-    </div>
+            <SendIcon />
+          </IconButton>
+        </Box>
+      </Paper>
+    </Box>
   );
 };

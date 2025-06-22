@@ -22,7 +22,6 @@ describe("MessageList", () => {
     {
       id: "msg1",
       content: "Hello there!",
-      senderId: "user1",
       sender: {
         id: "user1",
         name: "Alice",
@@ -31,13 +30,12 @@ describe("MessageList", () => {
       },
       conversationId: "conv1",
       readBy: [],
-      createdAt: new Date("2024-01-01T10:00:00Z"),
-      updatedAt: new Date("2024-01-01T10:00:00Z"),
+      createdAt: "2024-01-01T10:00:00Z",
+      updatedAt: "2024-01-01T10:00:00Z",
     },
     {
       id: "msg2",
       content: "Hi Alice!",
-      senderId: "user2",
       sender: {
         id: "user2",
         name: "Bob",
@@ -46,8 +44,8 @@ describe("MessageList", () => {
       },
       conversationId: "conv1",
       readBy: [],
-      createdAt: new Date("2024-01-01T10:01:00Z"),
-      updatedAt: new Date("2024-01-01T10:01:00Z"),
+      createdAt: "2024-01-01T10:01:00Z",
+      updatedAt: "2024-01-01T10:01:00Z",
     },
   ];
 
@@ -61,7 +59,7 @@ describe("MessageList", () => {
       <MessageList
         messages={messages}
         currentUser={currentUser}
-        loading={false}
+        isLoading={false}
       />
     );
 
@@ -72,19 +70,22 @@ describe("MessageList", () => {
   });
 
   it("shows loading state", () => {
-    const { container } = render(
+    render(
       <MessageList messages={[]} currentUser={currentUser} isLoading={true} />
     );
 
-    // The loading state shows a spinner with animate-spin class
-    expect(container.querySelector(".animate-spin")).toBeInTheDocument();
+    // The loading state shows a CircularProgress component
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
   it("shows empty state when no messages", () => {
     render(
-      <MessageList messages={[]} currentUser={currentUser} loading={false} />
+      <MessageList messages={[]} currentUser={currentUser} isLoading={false} />
     );
 
-    expect(screen.getByText(/no messages yet/i)).toBeInTheDocument();
+    expect(screen.getByText("No messages yet")).toBeInTheDocument();
+    expect(
+      screen.getByText("Start the conversation by sending a message")
+    ).toBeInTheDocument();
   });
 });

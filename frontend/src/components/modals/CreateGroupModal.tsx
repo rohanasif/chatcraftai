@@ -1,10 +1,25 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Typography,
+  Box,
+  Alert,
+  Chip,
+  IconButton,
+} from "@mui/material";
+import {
+  Group as GroupIcon,
+  Add as AddIcon,
+  Close as CloseIcon,
+} from "@mui/icons-material";
 import { isValidEmail } from "../../utils";
-import toast from "react-hot-toast";
 
 interface CreateGroupModalProps {
   isOpen: boolean;
@@ -17,70 +32,35 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   onClose,
   onCreateGroup,
 }) => {
-  const [formData, setFormData] = useState({
-    title: "",
-    memberEmails: "",
-  });
+  const [title, setTitle] = useState("");
+  const [memberEmails, setMemberEmails] = useState<string[]>([]);
+  const [currentEmail, setCurrentEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{
-    title?: string;
-    memberEmails?: string;
-  }>({});
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name as keyof typeof errors]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: typeof errors = {};
-
-    if (!formData.title.trim()) {
-      newErrors.title = "Group title is required";
-    }
-
-    if (!formData.memberEmails.trim()) {
-      newErrors.memberEmails = "At least one member email is required";
-    } else {
-      const emails = formData.memberEmails
-        .split(",")
-        .map((email) => email.trim());
-      const invalidEmails = emails.filter(
-        (email) => email && !isValidEmail(email),
-      );
-      if (invalidEmails.length > 0) {
-        newErrors.memberEmails = `Invalid email(s): ${invalidEmails.join(", ")}`;
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
+    if (!title.trim()) {
+      setError("Please enter a group title");
+      return;
+    }
+
+    if (memberEmails.length === 0) {
+      setError("Please add at least one member");
+      return;
+    }
 
     setLoading(true);
+    setError("");
 
     try {
-      const memberEmails = formData.memberEmails
-        .split(",")
-        .map((email) => email.trim())
-        .filter((email) => email);
-
-      await onCreateGroup(formData.title.trim(), memberEmails);
-      setFormData({ title: "", memberEmails: "" });
+      await onCreateGroup(title.trim(), memberEmails);
+      setTitle("");
+      setMemberEmails([]);
       onClose();
-      toast.success("Group created successfully!");
     } catch (error: unknown) {
-      toast.error(
+      setError(
         error instanceof Error ? error.message : "Failed to create group",
       );
     } finally {
@@ -88,94 +68,155 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
     }
   };
 
+  const handleAddMember = () => {
+    const email = currentEmail.trim();
+
+    if (!email) {
+      setError("Please enter an email address");
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    if (memberEmails.includes(email)) {
+      setError("This email is already added");
+      return;
+    }
+
+    setMemberEmails([...memberEmails, email]);
+    setCurrentEmail("");
+    setError("");
+  };
+
+  const handleRemoveMember = (emailToRemove: string) => {
+    setMemberEmails(memberEmails.filter((email) => email !== emailToRemove));
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddMember();
+    }
+  };
+
   const handleClose = () => {
     if (!loading) {
-      setFormData({ title: "", memberEmails: "" });
-      setErrors({});
+      setTitle("");
+      setMemberEmails([]);
+      setCurrentEmail("");
+      setError("");
       onClose();
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Create New Group
-          </h2>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600"
-            disabled={loading}
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
+    <Dialog
+      open={isOpen}
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+        },
+      }}
+    >
+      <DialogTitle sx={{ pb: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <GroupIcon color="primary" />
+          <Typography variant="h6" component="span">
+            Create Group Chat
+          </Typography>
+        </Box>
+      </DialogTitle>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
+      <form onSubmit={handleSubmit}>
+        <DialogContent sx={{ pb: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Create a new group chat and invite members by their email addresses.
+          </Typography>
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          <TextField
+            fullWidth
             label="Group name"
-            name="title"
-            type="text"
-            value={formData.title}
-            onChange={handleChange}
-            error={errors.title}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
             placeholder="Enter group name"
+            disabled={loading}
             required
+            autoFocus
+            sx={{ mb: 3 }}
           />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Member emails
-            </label>
-            <textarea
-              name="memberEmails"
-              value={formData.memberEmails}
-              onChange={handleChange}
-              placeholder="Enter email addresses separated by commas"
-              className={`w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                errors.memberEmails ? "border-red-300" : "border-gray-300"
-              }`}
-              rows={3}
-              required
-            />
-            {errors.memberEmails && (
-              <p className="text-sm text-red-600 mt-1">{errors.memberEmails}</p>
-            )}
-            <p className="text-xs text-gray-500 mt-1">
-              Separate multiple email addresses with commas
-            </p>
-          </div>
+          <Typography variant="subtitle2" gutterBottom>
+            Add Members ({memberEmails.length})
+          </Typography>
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
+          <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+            <TextField
+              fullWidth
+              label="Email address"
+              type="email"
+              value={currentEmail}
+              onChange={(e) => setCurrentEmail(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Enter email address"
               disabled={loading}
+              size="small"
+            />
+            <IconButton
+              onClick={handleAddMember}
+              disabled={loading || !currentEmail.trim()}
+              color="primary"
+              sx={{ flexShrink: 0 }}
             >
-              Cancel
-            </Button>
-            <Button type="submit" loading={loading}>
-              Create Group
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+              <AddIcon />
+            </IconButton>
+          </Box>
+
+          {memberEmails.length > 0 && (
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+              {memberEmails.map((email, index) => (
+                <Chip
+                  key={index}
+                  label={email}
+                  onDelete={() => handleRemoveMember(email)}
+                  deleteIcon={<CloseIcon />}
+                  size="small"
+                  variant="outlined"
+                />
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button
+            onClick={handleClose}
+            disabled={loading}
+            sx={{ minWidth: 100 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading || !title.trim() || memberEmails.length === 0}
+            sx={{ minWidth: 100 }}
+          >
+            {loading ? "Creating..." : "Create Group"}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };

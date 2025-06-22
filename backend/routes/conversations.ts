@@ -6,10 +6,23 @@ const router = express.Router();
 
 // Create direct chat
 const createDirectChatHandler: RequestHandler = async (req, res) => {
-  const { userId, otherUserId } = req.body;
+  const { userId, targetEmail } = req.body;
   const prisma = await getPrismaClient();
 
   try {
+    // Find the target user by email
+    const targetUser = await prisma.user.findUnique({
+      where: { email: targetEmail },
+      select: { id: true },
+    });
+
+    if (!targetUser) {
+      res.status(404).json({ error: "User not found with that email address" });
+      return;
+    }
+
+    const otherUserId = targetUser.id;
+
     // Check if conversation already exists
     const existingConversation = await prisma.conversation.findFirst({
       where: {
@@ -69,10 +82,31 @@ const createDirectChatHandler: RequestHandler = async (req, res) => {
 
 // Create group chat (admin only)
 const createGroupChatHandler: RequestHandler = async (req, res) => {
-  const { title, memberIds, isPublic } = req.body;
+  const { title, memberEmails, isPublic } = req.body;
   const prisma = await getPrismaClient();
 
   try {
+    // Find all users by their emails
+    const users = await prisma.user.findMany({
+      where: {
+        email: { in: memberEmails },
+      },
+      select: { id: true, email: true },
+    });
+
+    if (users.length !== memberEmails.length) {
+      const foundEmails = users.map((user) => user.email);
+      const missingEmails = memberEmails.filter(
+        (email) => !foundEmails.includes(email),
+      );
+      res.status(404).json({
+        error: `Users not found: ${missingEmails.join(", ")}`,
+      });
+      return;
+    }
+
+    const memberIds = users.map((user) => user.id);
+
     const conversation = await prisma.conversation.create({
       data: {
         title,

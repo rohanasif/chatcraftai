@@ -35,7 +35,15 @@ class ApiService {
       const error = await response
         .json()
         .catch(() => ({ error: "Network error" }));
-      throw new Error(error.error || `HTTP ${response.status}`);
+
+      // Create a more specific error message
+      const errorMessage = error.error || `HTTP ${response.status}`;
+      const errorObj = new Error(errorMessage);
+
+      // Add status code to error for better handling
+      (errorObj as unknown as Record<string, unknown>).status = response.status;
+
+      throw errorObj;
     }
 
     return response.json();
@@ -74,14 +82,21 @@ class ApiService {
   async createDirectChat(data: CreateDirectChatRequest): Promise<Conversation> {
     return this.request("/conversations/direct", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        userId: data.userId,
+        targetEmail: data.targetEmail,
+      }),
     });
   }
 
   async createGroupChat(data: CreateGroupChatRequest): Promise<Conversation> {
     return this.request("/conversations/group", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        title: data.title,
+        memberEmails: data.memberEmails,
+        isPublic: data.isPublic || false,
+      }),
     });
   }
 
@@ -100,9 +115,7 @@ class ApiService {
     conversationId: string,
     userId: string,
   ): Promise<{ unreadCount: number }> {
-    return this.request(
-      `/conversations/${conversationId}/unread?userId=${userId}`,
-    );
+    return this.request(`/conversations/${userId}/unread`);
   }
 
   async markAsRead(

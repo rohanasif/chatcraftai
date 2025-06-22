@@ -40,9 +40,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await apiService.getCurrentUser();
       setUser(response.user);
-    } catch (error) {
-      console.error("Failed to refresh user:", error);
-      setUser(null);
+    } catch (error: unknown) {
+      // Don't log authentication errors as they're expected when user is not logged in
+      if (
+        error instanceof Error &&
+        (error.message === "Access token required" ||
+          error.message === "Unauthorized")
+      ) {
+        // This is expected when user is not authenticated
+        setUser(null);
+      } else {
+        console.error("Failed to refresh user:", error);
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }

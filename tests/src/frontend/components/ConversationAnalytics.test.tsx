@@ -100,7 +100,7 @@ describe("ConversationAnalytics", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Conversation Analytics")).toBeInTheDocument();
     expect(screen.getByText("Summary")).toBeInTheDocument();
-    expect(screen.getByText("Statistics")).toBeInTheDocument();
+    expect(screen.getByText("Key Metrics")).toBeInTheDocument();
     expect(screen.getByText("Sentiment Analysis")).toBeInTheDocument();
   });
 

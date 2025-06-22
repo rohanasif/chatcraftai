@@ -27,11 +27,6 @@ const config: Config = {
         ],
       },
       transformIgnorePatterns: ["node_modules/(?!(@prisma/client|dotenv)/)"],
-      globals: {
-        "ts-jest": {
-          tsconfig: "tsconfig.json",
-        },
-      },
     },
     {
       displayName: "backend",
@@ -60,11 +55,6 @@ const config: Config = {
       transformIgnorePatterns: [
         "node_modules/(?!(@prisma/client|dotenv|pglite)/)",
       ],
-      globals: {
-        "ts-jest": {
-          tsconfig: "tsconfig.json",
-        },
-      },
     },
   ],
   testEnvironment: "node",

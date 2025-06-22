@@ -18,8 +18,8 @@ jest.mock("../../../../frontend/src/contexts/AuthContext", () => ({
 describe("ChatHeader", () => {
   const conversation = {
     id: "conv1",
-    name: "Test Conversation",
-    type: "group" as const,
+    title: "Test Group",
+    isGroup: true,
     members: [
       {
         id: "user1",
@@ -34,8 +34,8 @@ describe("ChatHeader", () => {
         avatar: null,
       },
     ],
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
   it("renders conversation title and members", () => {
@@ -48,11 +48,12 @@ describe("ChatHeader", () => {
           email: "current@example.com",
         }}
         onShowAnalytics={jest.fn()}
+        onShowMembers={jest.fn()}
       />
     );
 
-    expect(screen.getByText("Alice")).toBeInTheDocument();
-    expect(screen.getByText("Online")).toBeInTheDocument();
+    expect(screen.getByText("Test Group")).toBeInTheDocument();
+    expect(screen.getByText("2 members")).toBeInTheDocument();
   });
 
   it("calls onShowAnalytics when analytics button is clicked", () => {
@@ -67,6 +68,7 @@ describe("ChatHeader", () => {
           email: "current@example.com",
         }}
         onShowAnalytics={onShowAnalytics}
+        onShowMembers={jest.fn()}
       />
     );
 

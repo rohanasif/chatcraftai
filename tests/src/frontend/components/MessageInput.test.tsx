@@ -10,12 +10,14 @@ describe("MessageInput", () => {
         onSendMessage={jest.fn()}
         onTyping={jest.fn()}
         onRequestSuggestions={jest.fn()}
+        suggestions={[]}
+        isTyping={false}
       />
     );
     expect(
       screen.getByPlaceholderText("Type a message...")
     ).toBeInTheDocument();
-    expect(screen.getByText("Send")).toBeInTheDocument();
+    expect(screen.getByTitle("Send message")).toBeInTheDocument();
   });
 
   it("calls onSendMessage when message is submitted", () => {
@@ -25,12 +27,14 @@ describe("MessageInput", () => {
         onSendMessage={onSendMessage}
         onTyping={jest.fn()}
         onRequestSuggestions={jest.fn()}
+        suggestions={[]}
+        isTyping={false}
       />
     );
     fireEvent.change(screen.getByPlaceholderText("Type a message..."), {
       target: { value: "Hello world" },
     });
-    fireEvent.click(screen.getByText("Send"));
+    fireEvent.click(screen.getByTitle("Send message"));
     expect(onSendMessage).toHaveBeenCalledWith("Hello world");
   });
 
@@ -41,6 +45,8 @@ describe("MessageInput", () => {
         onSendMessage={jest.fn()}
         onTyping={jest.fn()}
         onRequestSuggestions={onRequestSuggestions}
+        suggestions={[]}
+        isTyping={false}
       />
     );
     fireEvent.click(screen.getByTitle("Get AI suggestions"));

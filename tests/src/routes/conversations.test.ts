@@ -45,7 +45,7 @@ describe("Conversations Routes", () => {
         .set("Authorization", `Bearer ${authToken}`)
         .send({
           userId: user1.id,
-          otherUserId: user2.id,
+          targetEmail: user2.email,
         })
         .expect(200);
 
@@ -63,7 +63,7 @@ describe("Conversations Routes", () => {
         .set("Authorization", `Bearer ${authToken}`)
         .send({
           userId: user1.id,
-          otherUserId: user2.id,
+          targetEmail: user2.email,
         })
         .expect(200);
 
@@ -75,7 +75,7 @@ describe("Conversations Routes", () => {
         .set("Authorization", `Bearer ${authToken}`)
         .send({
           userId: user1.id,
-          otherUserId: user2.id,
+          targetEmail: user2.email,
         })
         .expect(200);
 
@@ -87,12 +87,14 @@ describe("Conversations Routes", () => {
         .post("/api/conversations/direct")
         .set("Authorization", `Bearer ${authToken}`)
         .send({
-          userId: "non-existent-user-id",
-          otherUserId: user2.id,
+          userId: user1.id,
+          targetEmail: "non-existent@example.com",
         })
-        .expect(500);
+        .expect(404);
 
-      expect(response.body.error).toBe("Failed to create direct chat");
+      expect(response.body.error).toBe(
+        "User not found with that email address"
+      );
     });
   });
 
@@ -125,7 +127,7 @@ describe("Conversations Routes", () => {
         .set("Authorization", `Bearer ${authToken}`)
         .send({
           title: "Test Group",
-          memberIds: [user1.id, user2.id, user3.id],
+          memberEmails: [user1.email, user2.email, user3.email],
           isPublic: true,
         })
         .expect(200);
@@ -143,7 +145,7 @@ describe("Conversations Routes", () => {
         .set("Authorization", `Bearer ${authToken}`)
         .send({
           title: "Private Group",
-          memberIds: [user1.id, user2.id],
+          memberEmails: [user1.email, user2.email],
           isPublic: false,
         })
         .expect(200);
@@ -157,11 +159,13 @@ describe("Conversations Routes", () => {
         .set("Authorization", `Bearer ${authToken}`)
         .send({
           title: "Test Group",
-          memberIds: ["non-existent-user-id"],
+          memberEmails: ["non-existent@example.com"],
         })
-        .expect(500);
+        .expect(404);
 
-      expect(response.body.error).toBe("Failed to create group chat");
+      expect(response.body.error).toBe(
+        "Users not found: non-existent@example.com"
+      );
     });
   });
 

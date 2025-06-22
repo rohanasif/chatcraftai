@@ -18,6 +18,18 @@ import {
 import { apiService } from "../../services/api";
 import { wsService } from "../../services/websocket";
 import toast from "react-hot-toast";
+import {
+  Box,
+  AppBar,
+  Toolbar,
+  IconButton,
+  Typography,
+  Avatar,
+  CircularProgress,
+  Paper,
+  Button,
+} from "@mui/material";
+import { Menu as MenuIcon, Chat as ChatIcon } from "@mui/icons-material";
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -265,9 +277,23 @@ export default function DashboardPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background:
+            "linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #e0e7ff 100%)",
+        }}
+      >
+        <Box sx={{ textAlign: "center" }}>
+          <CircularProgress size={48} sx={{ mb: 2 }} />
+          <Typography variant="body1" color="text.secondary">
+            Loading...
+          </Typography>
+        </Box>
+      </Box>
     );
   }
 
@@ -276,9 +302,43 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-screen flex bg-gray-100">
+    <Box
+      sx={{ height: "100vh", display: "flex", bgcolor: "background.default" }}
+    >
+      {/* Mobile AppBar */}
+      <AppBar
+        position="fixed"
+        sx={{
+          display: { xs: "flex", lg: "none" },
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
+      >
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            edge="start"
+            onClick={() => setIsSidebarOpen(true)}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            ChatCraftAI
+          </Typography>
+          <Avatar src={user.avatar} sx={{ width: 32, height: 32 }}>
+            {user.name?.charAt(0)}
+          </Avatar>
+        </Toolbar>
+      </AppBar>
+
       {/* Sidebar */}
-      <div className="w-80 flex-shrink-0">
+      <Box
+        sx={{
+          width: { lg: 320 },
+          flexShrink: 0,
+          display: { xs: "none", lg: "block" },
+        }}
+      >
         <Sidebar
           conversations={conversations}
           selectedConversationId={selectedConversation?.id}
@@ -287,10 +347,30 @@ export default function DashboardPage() {
           onCreateGroupChat={() => setShowGroupModal(true)}
           onDiscoverGroups={handleDiscoverGroups}
         />
-      </div>
+      </Box>
+
+      {/* Mobile Sidebar */}
+      <Sidebar
+        conversations={conversations}
+        selectedConversationId={selectedConversation?.id}
+        onSelectConversation={handleSelectConversation}
+        onCreateDirectChat={() => setShowDirectChatModal(true)}
+        onCreateGroupChat={() => setShowGroupModal(true)}
+        onDiscoverGroups={handleDiscoverGroups}
+        isMobile={true}
+        onClose={() => setIsSidebarOpen(false)}
+      />
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          minWidth: 0,
+          pt: { xs: 8, lg: 0 },
+        }}
+      >
         {selectedConversation ? (
           <>
             <ChatHeader
@@ -316,34 +396,77 @@ export default function DashboardPage() {
             />
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              p: 4,
+            }}
+          >
+            <Paper
+              elevation={0}
+              sx={{
+                p: 6,
+                textAlign: "center",
+                maxWidth: 400,
+                background: "transparent",
+              }}
+            >
+              <Avatar
+                sx={{
+                  width: 96,
+                  height: 96,
+                  mx: "auto",
+                  mb: 3,
+                  background:
+                    "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+                  boxShadow: 3,
+                }}
+              >
+                <ChatIcon sx={{ fontSize: 48 }} />
+              </Avatar>
+              <Typography
+                variant="h4"
+                component="h2"
+                gutterBottom
+                sx={{ fontWeight: 700 }}
+              >
                 Welcome to ChatCraftAI
-              </h2>
-              <p className="text-gray-600 mb-4">
+              </Typography>
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                sx={{ mb: 4, lineHeight: 1.6 }}
+              >
                 Select a conversation or start a new chat to begin messaging
-              </p>
-              <div className="space-x-4">
-                <button
+                with AI-powered features
+              </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <Button
+                  variant="contained"
+                  size="large"
                   onClick={() => setShowDirectChatModal(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  sx={{ py: 1.5, fontSize: "1rem", fontWeight: 600 }}
                 >
                   Start New Chat
-                </button>
+                </Button>
                 {user.isAdmin && (
-                  <button
+                  <Button
+                    variant="outlined"
+                    size="large"
                     onClick={() => setShowGroupModal(true)}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    sx={{ py: 1.5, fontSize: "1rem", fontWeight: 600 }}
                   >
                     Create Group
-                  </button>
+                  </Button>
                 )}
-              </div>
-            </div>
-          </div>
+              </Box>
+            </Paper>
+          </Box>
         )}
-      </div>
+      </Box>
 
       {/* Modals */}
       <CreateDirectChatModal
@@ -365,6 +488,6 @@ export default function DashboardPage() {
           onClose={() => setShowAnalytics(false)}
         />
       )}
-    </div>
+    </Box>
   );
 }

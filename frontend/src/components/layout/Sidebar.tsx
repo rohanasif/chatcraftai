@@ -2,11 +2,41 @@
 
 import React, { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { Avatar } from "../ui/Avatar";
-import { Button } from "../ui/Button";
 import { Conversation } from "../../types";
 import { formatMessageTime, truncateText } from "../../utils";
-import { PlusIcon, UsersIcon, UserIcon } from "@heroicons/react/24/outline";
+import {
+  Box,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemAvatar,
+  ListItemText,
+  Avatar,
+  Typography,
+  Button,
+  IconButton,
+  TextField,
+  InputAdornment,
+  Badge,
+  Divider,
+  Menu,
+  MenuItem,
+  Chip,
+  Paper,
+} from "@mui/material";
+import {
+  Add as AddIcon,
+  Group as GroupIcon,
+  Person as PersonIcon,
+  Search as SearchIcon,
+  MoreVert as MoreVertIcon,
+  Settings as SettingsIcon,
+  Notifications as NotificationsIcon,
+  Logout as LogoutIcon,
+  Close as CloseIcon,
+  Chat as ChatIcon,
+} from "@mui/icons-material";
 
 interface SidebarProps {
   conversations: Conversation[];
@@ -15,6 +45,8 @@ interface SidebarProps {
   onCreateDirectChat: () => void;
   onCreateGroupChat: () => void;
   onDiscoverGroups: () => void;
+  isMobile?: boolean;
+  onClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -24,9 +56,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCreateDirectChat,
   onCreateGroupChat,
   onDiscoverGroups,
+  isMobile = false,
+  onClose,
 }) => {
   const { user, logout } = useAuth();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const getConversationTitle = (conversation: Conversation) => {
     if (conversation.isGroup) {
@@ -47,166 +82,434 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return truncateText(lastMessage.content, 50);
   };
 
-  return (
-    <div className="flex flex-col h-full bg-white border-r border-gray-200">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
-        <div className="flex items-center space-x-3">
-          <Avatar user={user!} size="sm" />
-          <div>
-            <h2 className="font-semibold text-gray-900">{user?.name}</h2>
-            <p className="text-sm text-gray-500">{user?.email}</p>
-          </div>
-        </div>
-        <div className="relative">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          </Button>
+  const filteredConversations = conversations.filter((conversation) => {
+    const title = getConversationTitle(conversation).toLowerCase();
+    const lastMessage = getLastMessage(conversation).toLowerCase();
+    const query = searchQuery.toLowerCase();
+    return title.includes(query) || lastMessage.includes(query);
+  });
 
-          {isMenuOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
-              <button
-                onClick={logout}
-                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    logout();
+    handleMenuClose();
+  };
+
+  const drawerContent = (
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      {/* Header */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2,
+          background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
+          borderBottom: "1px solid",
+          borderColor: "divider",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Box
+            sx={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}
+          >
+            <Badge
+              overlap="circular"
+              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+              badgeContent={
+                <Box
+                  sx={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: "50%",
+                    bgcolor: "success.main",
+                    border: "2px solid",
+                    borderColor: "background.paper",
+                  }}
+                />
+              }
+            >
+              <Avatar
+                src={user?.avatar}
+                sx={{
+                  width: 40,
+                  height: 40,
+                  bgcolor: "primary.main",
+                }}
               >
-                Sign out
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+                {user?.name?.charAt(0)}
+              </Avatar>
+            </Badge>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography variant="subtitle2" noWrap sx={{ fontWeight: 600 }}>
+                {user?.name}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" noWrap>
+                {user?.email}
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            <IconButton
+              size="small"
+              onClick={handleMenuClick}
+              sx={{ color: "text.secondary" }}
+            >
+              <MoreVertIcon />
+            </IconButton>
+            {isMobile && (
+              <IconButton
+                size="small"
+                onClick={onClose}
+                sx={{ color: "text.secondary" }}
+              >
+                <CloseIcon />
+              </IconButton>
+            )}
+          </Box>
+        </Box>
+      </Paper>
+
+      {/* Search */}
+      <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Search conversations..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="action" />
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+            },
+          }}
+        />
+      </Box>
 
       {/* Action Buttons */}
-      <div className="p-4 space-y-2">
+      <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1 }}>
         <Button
+          fullWidth
+          variant="outlined"
+          size="small"
+          startIcon={<PersonIcon />}
           onClick={onCreateDirectChat}
-          className="w-full justify-start"
-          variant="outline"
-          size="sm"
+          sx={{ justifyContent: "flex-start" }}
         >
-          <UserIcon className="w-4 h-4 mr-2" />
           New Chat
         </Button>
         {user?.isAdmin && (
           <Button
+            fullWidth
+            variant="outlined"
+            size="small"
+            startIcon={<GroupIcon />}
             onClick={onCreateGroupChat}
-            className="w-full justify-start"
-            variant="outline"
-            size="sm"
+            sx={{ justifyContent: "flex-start" }}
           >
-            <UsersIcon className="w-4 h-4 mr-2" />
             Create Group
           </Button>
         )}
         <Button
+          fullWidth
+          variant="outlined"
+          size="small"
+          startIcon={<AddIcon />}
           onClick={onDiscoverGroups}
-          className="w-full justify-start"
-          variant="outline"
-          size="sm"
+          sx={{ justifyContent: "flex-start" }}
         >
-          <PlusIcon className="w-4 h-4 mr-2" />
           Discover Groups
         </Button>
-      </div>
+      </Box>
 
       {/* Conversations List */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="px-4 py-2">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Conversations
-          </h3>
-        </div>
-        <div className="space-y-1">
-          {conversations.map((conversation) => {
+      <Box sx={{ flex: 1, overflow: "hidden" }}>
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontWeight: 600, textTransform: "uppercase" }}
+          >
+            Conversations ({filteredConversations.length})
+          </Typography>
+        </Box>
+        <List sx={{ px: 1, py: 0, height: "100%", overflow: "auto" }}>
+          {filteredConversations.map((conversation) => {
             const isSelected = conversation.id === selectedConversationId;
             const hasUnread =
               conversation.unreadCount && conversation.unreadCount > 0;
 
             return (
-              <button
-                key={conversation.id}
-                onClick={() => onSelectConversation(conversation)}
-                className={`w-full text-left p-3 hover:bg-gray-50 transition-colors ${
-                  isSelected ? "bg-blue-50 border-r-2 border-blue-500" : ""
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0">
+              <ListItem key={conversation.id} disablePadding sx={{ mb: 0.5 }}>
+                <ListItemButton
+                  selected={isSelected}
+                  onClick={() => {
+                    onSelectConversation(conversation);
+                    if (isMobile && onClose) {
+                      onClose();
+                    }
+                  }}
+                  sx={{
+                    borderRadius: 2,
+                    "&.Mui-selected": {
+                      bgcolor: "primary.main",
+                      color: "primary.contrastText",
+                      "&:hover": {
+                        bgcolor: "primary.dark",
+                      },
+                    },
+                  }}
+                >
+                  <ListItemAvatar>
                     {conversation.isGroup ? (
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <UsersIcon className="w-4 h-4 text-blue-600" />
-                      </div>
+                      <Avatar
+                        sx={{
+                          bgcolor: "primary.main",
+                          width: 40,
+                          height: 40,
+                        }}
+                      >
+                        <GroupIcon />
+                      </Avatar>
                     ) : (
                       <Avatar
-                        user={{
-                          name: getConversationTitle(conversation),
-                          avatar: conversation.members.find(
-                            (m) => m.id !== user?.id,
-                          )?.avatar,
+                        src={
+                          conversation.members.find((m) => m.id !== user?.id)
+                            ?.avatar
+                        }
+                        sx={{
+                          width: 40,
+                          height: 40,
+                          bgcolor: "secondary.main",
                         }}
-                        size="sm"
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p
-                        className={`text-sm font-medium truncate ${
-                          hasUnread ? "text-gray-900" : "text-gray-700"
-                        }`}
                       >
-                        {getConversationTitle(conversation)}
-                      </p>
-                      {hasUnread && (
-                        <span className="flex-shrink-0 ml-2 bg-blue-500 text-white text-xs rounded-full px-2 py-1">
-                          {conversation.unreadCount}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 truncate">
-                      {getLastMessage(conversation)}
-                    </p>
-                    {conversation.messages.length > 0 && (
-                      <p className="text-xs text-gray-400">
-                        {formatMessageTime(
-                          conversation.messages[
-                            conversation.messages.length - 1
-                          ].createdAt,
-                        )}
-                      </p>
+                        {getConversationTitle(conversation).charAt(0)}
+                      </Avatar>
                     )}
-                  </div>
-                </div>
-              </button>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          noWrap
+                          component="div"
+                          sx={{
+                            fontWeight: hasUnread ? 600 : 400,
+                            color: isSelected
+                              ? "inherit"
+                              : hasUnread
+                                ? "text.primary"
+                                : "text.secondary",
+                          }}
+                        >
+                          {getConversationTitle(conversation)}
+                        </Typography>
+                        {hasUnread && (
+                          <Chip
+                            label={conversation.unreadCount}
+                            size="small"
+                            color="primary"
+                            sx={{
+                              height: 20,
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                            }}
+                          />
+                        )}
+                      </Box>
+                    }
+                    secondary={
+                      <Typography
+                        variant="caption"
+                        noWrap
+                        component="div"
+                        sx={{
+                          color: isSelected
+                            ? "inherit"
+                            : hasUnread
+                              ? "text.primary"
+                              : "text.secondary",
+                          opacity: isSelected ? 0.8 : 1,
+                        }}
+                      >
+                        {getLastMessage(conversation)}
+                      </Typography>
+                    }
+                  />
+                  {conversation.messages.length > 0 && (
+                    <Typography
+                      variant="caption"
+                      component="div"
+                      sx={{
+                        color: isSelected ? "inherit" : "text.secondary",
+                        opacity: isSelected ? 0.6 : 1,
+                        display: "block",
+                        mt: 0.5,
+                        ml: 7, // Align with the text content
+                      }}
+                    >
+                      {formatMessageTime(
+                        conversation.messages[conversation.messages.length - 1]
+                          .createdAt,
+                      )}
+                    </Typography>
+                  )}
+                </ListItemButton>
+              </ListItem>
             );
           })}
 
-          {conversations.length === 0 && (
-            <div className="p-4 text-center text-gray-500">
-              <p className="text-sm">No conversations yet</p>
-              <p className="text-xs mt-1">
-                Start a new chat to begin messaging
-              </p>
-            </div>
+          {filteredConversations.length === 0 && searchQuery ? (
+            <Box sx={{ p: 4, textAlign: "center" }}>
+              <SearchIcon
+                sx={{ fontSize: 48, color: "text.disabled", mb: 2 }}
+              />
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                gutterBottom
+                component="div"
+              >
+                No conversations found
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                component="div"
+              >
+                Try adjusting your search terms
+              </Typography>
+            </Box>
+          ) : (
+            filteredConversations.length === 0 && (
+              <Box sx={{ p: 4, textAlign: "center" }}>
+                <Avatar
+                  sx={{
+                    width: 64,
+                    height: 64,
+                    mx: "auto",
+                    mb: 2,
+                    bgcolor: "grey.100",
+                  }}
+                >
+                  <ChatIcon sx={{ fontSize: 32, color: "text.disabled" }} />
+                </Avatar>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  gutterBottom
+                  component="div"
+                >
+                  No conversations yet
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  component="div"
+                  sx={{ display: "block", mb: 2 }}
+                >
+                  Start a new chat to begin messaging
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<PersonIcon />}
+                  onClick={onCreateDirectChat}
+                >
+                  Start New Chat
+                </Button>
+              </Box>
+            )
           )}
-        </div>
-      </div>
-    </div>
+        </List>
+      </Box>
+    </Box>
+  );
+
+  return (
+    <>
+      {isMobile ? (
+        <Drawer
+          anchor="left"
+          open={true}
+          onClose={onClose}
+          variant="temporary"
+          sx={{
+            "& .MuiDrawer-paper": {
+              width: 320,
+              boxSizing: "border-box",
+            },
+          }}
+        >
+          {drawerContent}
+        </Drawer>
+      ) : (
+        <Paper
+          elevation={0}
+          sx={{
+            width: 320,
+            height: "100%",
+            borderRight: "1px solid",
+            borderColor: "divider",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {drawerContent}
+        </Paper>
+      )}
+
+      {/* User Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            minWidth: 180,
+          },
+        }}
+      >
+        <MenuItem onClick={handleMenuClose}>
+          <SettingsIcon sx={{ mr: 2, fontSize: 20 }} />
+          Settings
+        </MenuItem>
+        <MenuItem onClick={handleMenuClose}>
+          <NotificationsIcon sx={{ mr: 2, fontSize: 20 }} />
+          Notifications
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={handleLogout} sx={{ color: "error.main" }}>
+          <LogoutIcon sx={{ mr: 2, fontSize: 20 }} />
+          Sign out
+        </MenuItem>
+      </Menu>
+    </>
   );
 };

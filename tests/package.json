@@ -44,6 +44,7 @@
     "typescript": "^5.7.2"
   },
   "dependencies": {
+    "@mui/material": "^7.1.2",
     "@prisma/client": "^6.10.1",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",

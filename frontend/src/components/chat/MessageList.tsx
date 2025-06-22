@@ -1,9 +1,19 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import { Message, User } from "../../types";
-import { Avatar } from "../ui/Avatar";
 import { formatMessageTime } from "../../utils";
+import {
+  Box,
+  Typography,
+  Avatar,
+  Paper,
+  CircularProgress,
+} from "@mui/material";
+import {
+  Check as CheckIcon,
+  CheckCircle as CheckCircleIcon,
+} from "@mui/icons-material";
 
 interface MessageListProps {
   messages: Message[];
@@ -28,79 +38,181 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 4,
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (messages.length === 0) {
+    return (
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 4,
+        }}
+      >
+        <Box sx={{ textAlign: "center" }}>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No messages yet
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Start the conversation by sending a message
+          </Typography>
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-      {messages.length === 0 ? (
-        <div className="flex items-center justify-center h-full text-gray-500">
-          <div className="text-center">
-            <p className="text-lg font-medium">No messages yet</p>
-            <p className="text-sm">
-              Start the conversation by sending a message!
-            </p>
-          </div>
-        </div>
-      ) : (
-        messages.map((message) => {
-          const isOwnMessage = message.sender.id === currentUser.id;
+    <Box
+      sx={{
+        flex: 1,
+        overflow: "auto",
+        p: 2,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+      }}
+    >
+      {messages.map((message, index) => {
+        const isOwnMessage = message.sender.id === currentUser.id;
+        const showSender =
+          index === 0 || messages[index - 1]?.sender.id !== message.sender.id;
 
-          return (
-            <div
-              key={message.id}
-              className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
+        return (
+          <Box
+            key={message.id}
+            sx={{
+              display: "flex",
+              justifyContent: isOwnMessage ? "flex-end" : "flex-start",
+              mb: 1,
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: isOwnMessage ? "row-reverse" : "row",
+                alignItems: "flex-end",
+                gap: 1,
+                maxWidth: "70%",
+              }}
             >
-              <div
-                className={`flex max-w-xs lg:max-w-md ${isOwnMessage ? "flex-row-reverse" : "flex-row"}`}
+              {!isOwnMessage && showSender && (
+                <Avatar
+                  src={message.sender.avatar}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    bgcolor: "secondary.main",
+                    flexShrink: 0,
+                  }}
+                >
+                  {message.sender.name?.charAt(0)}
+                </Avatar>
+              )}
+
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: isOwnMessage ? "flex-end" : "flex-start",
+                  gap: 0.5,
+                }}
               >
-                {!isOwnMessage && (
-                  <div className="flex-shrink-0 mr-2">
-                    <Avatar user={message.sender} size="sm" />
-                  </div>
+                {!isOwnMessage && showSender && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 600,
+                      color: "text.secondary",
+                      ml: 4,
+                    }}
+                  >
+                    {message.sender.name}
+                  </Typography>
                 )}
 
-                <div
-                  className={`flex flex-col ${isOwnMessage ? "items-end" : "items-start"}`}
+                <Paper
+                  elevation={1}
+                  sx={{
+                    p: 1.5,
+                    bgcolor: isOwnMessage ? "primary.main" : "background.paper",
+                    color: isOwnMessage
+                      ? "primary.contrastText"
+                      : "text.primary",
+                    borderRadius: 2,
+                    maxWidth: "100%",
+                    wordBreak: "break-word",
+                  }}
                 >
-                  {!isOwnMessage && (
-                    <p className="text-xs text-gray-500 mb-1">
-                      {message.sender.name}
-                    </p>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      lineHeight: 1.4,
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {message.content}
+                  </Typography>
+                </Paper>
+
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                    ml: isOwnMessage ? 0 : 4,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                      fontSize: "0.75rem",
+                    }}
+                  >
+                    {formatMessageTime(message.createdAt)}
+                  </Typography>
+
+                  {isOwnMessage && (
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                      {message.readBy.length > 0 ? (
+                        <CheckCircleIcon
+                          sx={{
+                            fontSize: 16,
+                            color: "success.main",
+                          }}
+                        />
+                      ) : (
+                        <CheckIcon
+                          sx={{
+                            fontSize: 16,
+                            color: "text.secondary",
+                          }}
+                        />
+                      )}
+                    </Box>
                   )}
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        );
+      })}
 
-                  <div
-                    className={`px-4 py-2 rounded-lg ${
-                      isOwnMessage
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-100 text-gray-900"
-                    }`}
-                  >
-                    <p className="text-sm whitespace-pre-wrap break-words">
-                      {message.content}
-                    </p>
-                  </div>
-
-                  <div
-                    className={`flex items-center mt-1 space-x-2 text-xs text-gray-500 ${
-                      isOwnMessage ? "flex-row-reverse" : "flex-row"
-                    }`}
-                  >
-                    <span>{formatMessageTime(message.createdAt)}</span>
-                    {isOwnMessage && (
-                      <span>{message.readBy.length > 1 ? "✓✓" : "✓"}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })
-      )}
       <div ref={messagesEndRef} />
-    </div>
+    </Box>
   );
 };
