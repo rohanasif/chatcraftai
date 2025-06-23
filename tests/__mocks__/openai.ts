@@ -21,7 +21,7 @@ const mockOpenAI = jest.fn().mockImplementation(() => {
             });
           }
           // Reply suggestions
-          if (systemContent.includes("reply suggestions")) {
+          if (systemContent.includes("follow-up message suggestions")) {
             // Check the context in the user message
             const userContext =
               params.messages.find((m) => m.role === "user")?.content || "";

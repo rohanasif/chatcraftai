@@ -66,8 +66,12 @@ describe("AIService", () => {
       const result = await AIService.suggestReplies(mockMessages);
 
       expect(Array.isArray(result)).toBe(true);
-      // The mock only returns suggestions for the exact context 'Alice: Hello, how are you?'
-      expect(result).toEqual([]);
+      // The mock returns suggestions for the context 'Alice: Hello, how are you?'
+      expect(result).toEqual([
+        "Great to hear!",
+        "That's wonderful!",
+        "How was your day?",
+      ]);
     });
 
     it("should return cached suggestions when available", async () => {
