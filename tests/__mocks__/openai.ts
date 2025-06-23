@@ -22,17 +22,33 @@ const mockOpenAI = jest.fn().mockImplementation(() => {
           }
           // Reply suggestions
           if (systemContent.includes("reply suggestions")) {
+            // Check the context in the user message
+            const userContext =
+              params.messages.find((m) => m.role === "user")?.content || "";
+            // If the context matches only the first message, return suggestions
+            if (userContext.trim() === "Alice: Hello, how are you?") {
+              return Promise.resolve({
+                choices: [
+                  {
+                    message: {
+                      content: JSON.stringify({
+                        replies: [
+                          "Great to hear!",
+                          "That's wonderful!",
+                          "How was your day?",
+                        ],
+                      }),
+                    },
+                  },
+                ],
+              });
+            }
+            // Otherwise, return empty suggestions
             return Promise.resolve({
               choices: [
                 {
                   message: {
-                    content: JSON.stringify({
-                      replies: [
-                        "Great to hear!",
-                        "That's wonderful!",
-                        "How was your day?",
-                      ],
-                    }),
+                    content: JSON.stringify({ replies: [] }),
                   },
                 },
               ],

@@ -78,7 +78,9 @@ export class AIService {
 
   static async suggestReplies(messages: Message[]): Promise<string[]> {
     const redisClient = await getRedisClient();
-    const context = messages
+    // Exclude the most recent message for follow-up suggestions
+    const contextMessages = messages.slice(0, -1);
+    const context = contextMessages
       .map((m) => `${m.sender.name}: ${m.content}`)
       .join("\n");
     const cacheKey = `replies:${context}`;
@@ -89,6 +91,9 @@ export class AIService {
       return JSON.parse(cachedStr);
     }
 
+    // Log the context sent to OpenAI
+    console.log("AI Suggestion Context:", context);
+
     const openaiClient = getOpenAIClient();
     const response = await openaiClient.chat.completions.create({
       model: "gpt-3.5-turbo",
@@ -96,7 +101,7 @@ export class AIService {
         {
           role: "system",
           content:
-            "Generate 3-5 short reply suggestions based on the conversation context. Return a JSON array of strings.",
+            "Generate 3-5 short, relevant follow-up message suggestions based on the conversation so far. Do NOT reply to the most recent message. Return a JSON object with a 'replies' key containing an array of strings.",
         },
         {
           role: "user",
@@ -107,12 +112,25 @@ export class AIService {
       response_format: { type: "json_object" },
     });
 
+    // Log the raw response from OpenAI
+    console.log(
+      "AI Suggestion Raw Response:",
+      response.choices[0].message.content,
+    );
+
     const content = response.choices[0].message.content || '{"replies":[]}';
-    const replies = JSON.parse(content).replies || [];
-
-    await redisClient.set(cacheKey, JSON.stringify(replies), { EX: 3600 });
-
-    return replies;
+    try {
+      const parsedContent = JSON.parse(content);
+      const replies = parsedContent.replies || [];
+      if (Array.isArray(replies)) {
+        await redisClient.set(cacheKey, JSON.stringify(replies), { EX: 3600 });
+        return replies;
+      }
+      return [];
+    } catch (e) {
+      console.error("Failed to parse AI suggestions:", e);
+      return [];
+    }
   }
 
   static async summarizeConversation(
