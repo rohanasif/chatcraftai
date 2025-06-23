@@ -33,15 +33,15 @@ beforeAll(async () => {
   initializePrisma(prisma);
 });
 
-// Global teardown to clean up resources
+// Global teardown to clean up resources (but not delete files)
 afterAll(async () => {
   // Import cleanup functions
   const { cleanupRedis } = require("../../backend/aiService");
-  const { cleanupPGlite } = require("./utils/pgliteTestUtils");
+  const { disconnectPGlite } = require("./utils/pgliteTestUtils");
 
   try {
     await cleanupRedis();
-    await cleanupPGlite();
+    await disconnectPGlite(); // Only disconnect, don't delete files
   } catch (error) {
     console.error("Error during global teardown:", error);
   }

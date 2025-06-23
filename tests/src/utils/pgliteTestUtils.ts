@@ -136,7 +136,7 @@ export async function getPrismaClient(): Promise<PrismaClient> {
   return prisma!;
 }
 
-export async function cleanupPGlite(): Promise<void> {
+export async function disconnectPGlite(): Promise<void> {
   if (prisma) {
     try {
       await prisma.$disconnect();
@@ -154,8 +154,13 @@ export async function cleanupPGlite(): Promise<void> {
     }
     pglite = null;
   }
+}
 
-  // Clean up the database directory
+export async function cleanupPGlite(): Promise<void> {
+  // First disconnect
+  await disconnectPGlite();
+
+  // Then clean up the database directory
   if (dbPath && fs.existsSync(dbPath)) {
     try {
       // Check if it's a directory and remove it recursively
