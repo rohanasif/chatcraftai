@@ -191,19 +191,19 @@ NEXT_PUBLIC_WS_URL="ws://localhost:3001"
 3. **Start all services**
 
    ```bash
-   docker-compose -f docker/docker-compose.yml up -d
+   docker compose -f docker/docker-compose.yml up -d
    ```
 
 4. **Run database migrations**
 
    ```bash
-   docker-compose exec backend npm run prisma:migrate
+   docker exec chatcraftai-backend npx prisma migrate deploy
    ```
 
-5. **Seed initial data**
+5. **Seed the database with initial data**
 
    ```bash
-   docker-compose exec backend npm run prisma:seed
+   docker exec chatcraftai-backend npm run prisma:seed
    ```
 
 6. **Access the application**
@@ -211,6 +211,12 @@ NEXT_PUBLIC_WS_URL="ws://localhost:3001"
    - Backend API: http://localhost:3001
    - Database: localhost:5432
    - Redis: localhost:6379
+
+> **Important**: After starting the containers, you must seed the database to have initial users and data. Run:
+>
+> ```bash
+> docker exec chatcraftai-backend npm run prisma:seed
+> ```
 
 ### Default Users
 
@@ -368,7 +374,7 @@ npm run format
 ### Production Docker
 
 ```bash
-docker-compose -f docker/docker-compose.prod.yml up -d
+docker compose -f docker/docker-compose.prod.yml up -d
 ```
 
 ### Environment Variables for Production

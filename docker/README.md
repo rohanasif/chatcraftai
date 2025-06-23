@@ -15,7 +15,7 @@ This directory contains the Docker configuration for ChatCraftAI, a real-time AI
 2. **Seed the database with initial users (run this once after containers are up):**
 
    ```bash
-   docker exec chatcraftai-backend npx prisma db seed
+   docker exec chatcraftai-backend npm run prisma:seed
    ```
 
 3. **Access the application:**
@@ -23,6 +23,12 @@ This directory contains the Docker configuration for ChatCraftAI, a real-time AI
    - Backend API: http://localhost:3001
    - PostgreSQL: localhost:5432
    - Redis: localhost:6379
+
+> **⚠️ Important**: The database starts empty. You must run the seeding command to create initial users and data:
+>
+> ```bash
+> docker exec chatcraftai-backend npm run prisma:seed
+> ```
 
 ### Default Users (after seeding)
 
@@ -106,13 +112,13 @@ docker exec -it chatcraftai-postgres psql -U postgres -d chatcraftai
 ### Initial Seeding
 
 - **Build containers once:** `docker compose up --build`
-- **Seed at runtime:** `docker exec chatcraftai-backend npx prisma db seed`
+- **Seed at runtime:** `docker exec chatcraftai-backend npm run prisma:seed`
 - **Users persist** across all subsequent `docker compose up/down` cycles
 
 ### When to Re-seed
 
 - Only re-seed if you want to reset all data to initial state
-- To re-seed, run: `docker exec chatcraftai-backend npx prisma db seed`
+- To re-seed, run: `docker exec chatcraftai-backend npm run prisma:seed`
 
 ### Data Reset
 
@@ -129,7 +135,7 @@ docker volume rm chatcraftai_postgres_data chatcraftai_redis_data
 docker compose up --build
 
 # Re-seed
-docker exec chatcraftai-backend npx prisma db seed
+docker exec chatcraftai-backend npm run prisma:seed
 ```
 
 ## Services Overview
@@ -248,15 +254,18 @@ For production deployment, use the production profile:
 
 ```bash
 # Build and start production services
-docker compose --profile production up --build
+docker compose -f docker-compose.prod.yml up -d --build
 
-# Or use the production compose file
-docker compose -f docker-compose.prod.yml up --build
+# Run database migrations
+docker compose -f docker-compose.prod.yml exec backend npx prisma migrate deploy
+
+# Seed initial data (if needed)
+docker compose -f docker-compose.prod.yml exec backend npm run prisma:seed
 ```
 
 ## Development Workflow
 
-1. **Initial setup:** `docker compose up --build` then `docker exec chatcraftai-backend npx prisma db seed`
+1. **Initial setup:** `docker compose up --build` then `docker exec chatcraftai-backend npm run prisma:seed`
 2. **Start services:** `docker compose up`
 3. **Make code changes** - they'll be reflected automatically
 4. **Test changes** in the browser
@@ -332,31 +341,31 @@ Both frontend and backend support hot reloading in development:
 Run Prisma migrations in the backend container:
 
 ```bash
-docker-compose exec backend npx prisma migrate dev
+docker compose exec backend npx prisma migrate dev
 ```
 
 ### Viewing Logs
 
 ```bash
 # All services
-docker-compose logs -f
+docker compose logs -f
 
 # Specific service
-docker-compose logs -f backend
-docker-compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f frontend
 ```
 
 ### Accessing Containers
 
 ```bash
 # Backend shell
-docker-compose exec backend sh
+docker compose exec backend sh
 
 # Frontend shell
-docker-compose exec frontend sh
+docker compose exec frontend sh
 
 # Database shell
-docker-compose exec postgres psql -U postgres -d chatcraftai
+docker compose exec postgres psql -U postgres -d chatcraftai
 ```
 
 ## 🚀 Production Deployment
@@ -373,18 +382,18 @@ docker-compose exec postgres psql -U postgres -d chatcraftai
 1. **Build and start production services:**
 
    ```bash
-   docker-compose -f docker-compose.prod.yml up -d --build
+   docker compose -f docker-compose.prod.yml up -d --build
    ```
 
 2. **Run database migrations:**
 
    ```bash
-   docker-compose -f docker-compose.prod.yml exec backend npx prisma migrate deploy
+   docker compose -f docker-compose.prod.yml exec backend npx prisma migrate deploy
    ```
 
 3. **Seed initial data (if needed):**
    ```bash
-   docker-compose -f docker-compose.prod.yml exec backend npm run prisma:seed
+   docker compose -f docker-compose.prod.yml exec backend npm run prisma:seed
    ```
 
 ### Scaling
@@ -404,10 +413,10 @@ All services include health checks:
 
 ```bash
 # Check service health
-docker-compose ps
+docker compose ps
 
 # View health check logs
-docker-compose exec backend curl http://localhost:3001/health
+docker compose exec backend curl http://localhost:3001/health
 ```
 
 ### Resource Monitoring
@@ -426,13 +435,13 @@ docker stats chatcraftai-backend
 
 ```bash
 # View real-time logs
-docker-compose logs -f --tail=100
+docker compose logs -f --tail=100
 
 # View logs for specific service
-docker-compose logs -f backend
+docker compose logs -f backend
 
 # Access container for debugging
-docker-compose exec backend sh
+docker compose exec backend sh
 ```
 
 ## 🧹 Maintenance
@@ -441,13 +450,13 @@ docker-compose exec backend sh
 
 ```bash
 # Stop and remove containers
-docker-compose down
+docker compose down
 
 # Remove volumes (⚠️ This will delete data)
-docker-compose down -v
+docker compose down -v
 
 # Remove images
-docker-compose down --rmi all
+docker compose down --rmi all
 
 # Full cleanup
 docker system prune -a
@@ -457,20 +466,20 @@ docker system prune -a
 
 ```bash
 # Pull latest images
-docker-compose pull
+docker compose pull
 
 # Rebuild with latest code
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ### Backups
 
 ```bash
 # Backup PostgreSQL data
-docker-compose exec postgres pg_dump -U postgres chatcraftai > backup.sql
+docker compose exec postgres pg_dump -U postgres chatcraftai > backup.sql
 
 # Backup Redis data
-docker-compose exec redis redis-cli BGSAVE
+docker compose exec redis redis-cli BGSAVE
 ```
 
 ## 🔒 Security Considerations
@@ -488,23 +497,23 @@ docker-compose exec redis redis-cli BGSAVE
 
 1. **Port Conflicts**: Ensure ports 3000, 3001, 5432, 6379 are available
 2. **Permission Issues**: Check file permissions for mounted volumes
-3. **Memory Issues**: Adjust resource limits in docker-compose.yml
+3. **Memory Issues**: Adjust resource limits in docker compose.yml
 4. **Network Issues**: Verify network connectivity between containers
 
 ### Debug Commands
 
 ```bash
 # Check container status
-docker-compose ps
+docker compose ps
 
 # View detailed container info
-docker-compose exec backend cat /proc/1/environ
+docker compose exec backend cat /proc/1/environ
 
 # Check network connectivity
-docker-compose exec backend ping postgres
+docker compose exec backend ping postgres
 
 # View container logs
-docker-compose logs backend
+docker compose logs backend
 ```
 
 ## 📚 Additional Resources
