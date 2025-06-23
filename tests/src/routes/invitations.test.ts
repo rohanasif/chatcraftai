@@ -250,7 +250,9 @@ describe("Invitations Routes", () => {
         .send({ userId: "invalid-user-id" })
         .expect(500);
 
-      expect(response.body.error).toBe("Failed to accept invitation");
+      expect(response.body.error).toBe(
+        "An unexpected error occurred while accepting invitation."
+      );
     });
   });
 });

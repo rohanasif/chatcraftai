@@ -71,11 +71,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const otherMember = conversation.members.find(
       (member) => member.id !== user?.id,
     );
-    return otherMember?.name || "Unknown User";
+    // If no other member found (chat with self), show current user's name
+    return otherMember?.name || user?.name || "Unknown User";
   };
 
   const getLastMessage = (conversation: Conversation) => {
-    if (conversation.messages.length === 0) {
+    if (!conversation.messages || conversation.messages.length === 0) {
       return "No messages yet";
     }
     const lastMessage = conversation.messages[conversation.messages.length - 1];
@@ -119,10 +120,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: 1,
           }}
         >
           <Box
-            sx={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              minWidth: 0,
+              flex: 1,
+              overflow: "hidden",
+            }}
           >
             <Badge
               overlap="circular"
@@ -146,21 +155,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   width: 40,
                   height: 40,
                   bgcolor: "primary.main",
+                  flexShrink: 0,
                 }}
               >
                 {user?.name?.charAt(0)}
               </Avatar>
             </Badge>
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography variant="subtitle2" noWrap sx={{ fontWeight: 600 }}>
+            <Box sx={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
+              <Typography
+                variant="subtitle2"
+                noWrap
+                sx={{
+                  fontWeight: 600,
+                  fontSize: { xs: "0.875rem", sm: "1rem" },
+                }}
+              >
                 {user?.name}
               </Typography>
-              <Typography variant="caption" color="text.secondary" noWrap>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                noWrap
+                sx={{ fontSize: { xs: "0.75rem", sm: "0.75rem" } }}
+              >
                 {user?.email}
               </Typography>
             </Box>
           </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              flexShrink: 0,
+            }}
+          >
             <IconButton
               size="small"
               onClick={handleMenuClick}
@@ -237,6 +266,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
           sx={{ justifyContent: "flex-start" }}
         >
           Discover Groups
+        </Button>
+        <Button
+          fullWidth
+          variant="outlined"
+          size="small"
+          startIcon={<LogoutIcon />}
+          onClick={handleLogout}
+          sx={{
+            justifyContent: "flex-start",
+            color: "error.main",
+            borderColor: "error.main",
+            "&:hover": {
+              borderColor: "error.dark",
+              bgcolor: "error.light",
+              color: "error.dark",
+            },
+          }}
+        >
+          Sign Out
         </Button>
       </Box>
 
@@ -361,24 +409,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </Typography>
                     }
                   />
-                  {conversation.messages.length > 0 && (
-                    <Typography
-                      variant="caption"
-                      component="div"
-                      sx={{
-                        color: isSelected ? "inherit" : "text.secondary",
-                        opacity: isSelected ? 0.6 : 1,
-                        display: "block",
-                        mt: 0.5,
-                        ml: 7, // Align with the text content
-                      }}
-                    >
-                      {formatMessageTime(
-                        conversation.messages[conversation.messages.length - 1]
-                          .createdAt,
-                      )}
-                    </Typography>
-                  )}
+                  {conversation.messages &&
+                    conversation.messages.length > 0 && (
+                      <Typography
+                        variant="caption"
+                        component="div"
+                        sx={{
+                          color: isSelected ? "inherit" : "text.secondary",
+                          opacity: isSelected ? 0.6 : 1,
+                          display: "block",
+                          mt: 0.5,
+                          ml: 7, // Align with the text content
+                        }}
+                      >
+                        {formatMessageTime(
+                          conversation.messages[
+                            conversation.messages.length - 1
+                          ].createdAt,
+                        )}
+                      </Typography>
+                    )}
                 </ListItemButton>
               </ListItem>
             );

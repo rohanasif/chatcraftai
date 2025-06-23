@@ -11,6 +11,10 @@ const getMessagesHandler: RequestHandler = async (req, res) => {
   const { limit = 50, cursor } = req.query;
 
   try {
+    if (!conversationId) {
+      res.status(400).json({ error: "conversationId is required" });
+      return;
+    }
     const prisma = await getPrismaClient();
 
     // First check if conversation exists
@@ -19,7 +23,7 @@ const getMessagesHandler: RequestHandler = async (req, res) => {
     });
 
     if (!conversation) {
-      res.status(500).json({ error: "Failed to fetch messages" });
+      res.status(404).json({ error: "Conversation not found" });
       return;
     }
 
@@ -60,7 +64,9 @@ const getMessagesHandler: RequestHandler = async (req, res) => {
     res.json(messages.reverse());
   } catch (error) {
     console.error("Failed to fetch messages:", error);
-    res.status(500).json({ error: "Failed to fetch messages" });
+    res
+      .status(500)
+      .json({ error: "An unexpected error occurred while fetching messages." });
   }
 };
 
@@ -68,6 +74,10 @@ const getMessagesHandler: RequestHandler = async (req, res) => {
 const getAnalyticsHandler: RequestHandler = async (req, res) => {
   const { conversationId } = req.params;
   try {
+    if (!conversationId) {
+      res.status(400).json({ error: "conversationId is required" });
+      return;
+    }
     const prisma = await getPrismaClient();
 
     // First check if conversation exists
@@ -76,7 +86,7 @@ const getAnalyticsHandler: RequestHandler = async (req, res) => {
     });
 
     if (!conversation) {
-      res.status(500).json({ error: "Failed to fetch analytics" });
+      res.status(404).json({ error: "Conversation not found" });
       return;
     }
 
@@ -143,7 +153,9 @@ const getAnalyticsHandler: RequestHandler = async (req, res) => {
     });
   } catch (error) {
     console.error("Failed to fetch analytics:", error);
-    res.status(500).json({ error: "Failed to fetch analytics" });
+    res.status(500).json({
+      error: "An unexpected error occurred while fetching analytics.",
+    });
   }
 };
 
@@ -153,6 +165,10 @@ const markMessageAsReadHandler: RequestHandler = async (req, res) => {
   const { userId } = req.body;
 
   try {
+    if (!messageId || !userId) {
+      res.status(400).json({ error: "messageId and userId are required" });
+      return;
+    }
     const prisma = await getPrismaClient();
     const message = await prisma.message.update({
       where: { id: messageId },
@@ -174,7 +190,16 @@ const markMessageAsReadHandler: RequestHandler = async (req, res) => {
     res.json({ success: true, message });
   } catch (error) {
     console.error("Failed to mark message as read:", error);
-    res.status(500).json({ error: "Failed to mark message as read" });
+    if (error && typeof error === "object" && "code" in error) {
+      const prismaError = error as { code: string };
+      if (prismaError.code === "P2025") {
+        res.status(404).json({ error: "Message not found" });
+        return;
+      }
+    }
+    res.status(500).json({
+      error: "An unexpected error occurred while marking message as read.",
+    });
   }
 };
 
@@ -184,6 +209,10 @@ const getReplySuggestionsHandler: RequestHandler = async (req, res) => {
   const { limit = 5 } = req.query;
 
   try {
+    if (!conversationId) {
+      res.status(400).json({ error: "conversationId is required" });
+      return;
+    }
     const prisma = await getPrismaClient();
 
     // First check if conversation exists
@@ -192,7 +221,7 @@ const getReplySuggestionsHandler: RequestHandler = async (req, res) => {
     });
 
     if (!conversation) {
-      res.status(500).json({ error: "Failed to get reply suggestions" });
+      res.status(404).json({ error: "Conversation not found" });
       return;
     }
 
@@ -226,7 +255,9 @@ const getReplySuggestionsHandler: RequestHandler = async (req, res) => {
     res.json({ suggestions: suggestions.slice(0, Number(limit)) });
   } catch (error) {
     console.error("Failed to get reply suggestions:", error);
-    res.status(500).json({ error: "Failed to get reply suggestions" });
+    res.status(500).json({
+      error: "An unexpected error occurred while getting reply suggestions.",
+    });
   }
 };
 

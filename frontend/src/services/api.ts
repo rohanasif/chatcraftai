@@ -74,6 +74,10 @@ class ApiService {
     return this.request("/auth/me");
   }
 
+  async getToken(): Promise<{ token: string }> {
+    return this.request("/auth/token");
+  }
+
   // Conversation endpoints
   async getConversations(userId: string): Promise<Conversation[]> {
     return this.request(`/conversations/${userId}`);

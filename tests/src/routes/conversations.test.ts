@@ -223,9 +223,9 @@ describe("Conversations Routes", () => {
       const response = await request(app)
         .get("/api/conversations/discover/invalid-user-id")
         .set("Authorization", `Bearer ${authToken}`)
-        .expect(500);
+        .expect(404);
 
-      expect(response.body.error).toBe("Failed to discover groups");
+      expect(response.body.error).toBe("User not found");
     });
   });
 
@@ -316,7 +316,9 @@ describe("Conversations Routes", () => {
         .send({ userId: "invalid-user-id" })
         .expect(500);
 
-      expect(response.body.error).toBe("Failed to join group");
+      expect(response.body.error).toBe(
+        "An unexpected error occurred while joining group."
+      );
     });
   });
 

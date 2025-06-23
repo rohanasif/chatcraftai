@@ -1,4 +1,4 @@
-import express, { RequestHandler } from "express";
+import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { getPrismaClient } from "../lib/prisma";
@@ -7,13 +7,30 @@ import { authenticateToken, AuthenticatedRequest } from "../middleware/auth";
 const router = express.Router();
 
 // Register
-const registerHandler: RequestHandler = async (req, res) => {
+const registerHandler = async (req, res) => {
   const { email, password, name, avatar, isAdmin } = req.body;
+
+  // Validate required fields
+  if (!email || !password || !name) {
+    return res
+      .status(400)
+      .json({ error: "Email, password, and name are required" });
+  }
+
   const prisma = await getPrismaClient();
 
-  const hashedPassword = await bcrypt.hash(password, 10);
-
   try {
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ error: "User already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = await prisma.user.create({
       data: {
         email,
@@ -39,12 +56,26 @@ const registerHandler: RequestHandler = async (req, res) => {
     res.json({ user });
   } catch (error) {
     console.error("Registration error:", error);
-    res.status(400).json({ error: "User already exists" });
+
+    // Handle specific Prisma errors
+    if (error && typeof error === "object" && "code" in error) {
+      const prismaError = error as { code: string };
+
+      if (prismaError.code === "P2002") {
+        return res.status(400).json({ error: "User already exists" });
+      }
+
+      if (prismaError.code === "P2003") {
+        return res.status(400).json({ error: "Invalid data provided" });
+      }
+    }
+
+    res.status(500).json({ error: "Registration failed. Please try again." });
   }
 };
 
 // Login
-const loginHandler: RequestHandler = async (req, res) => {
+const loginHandler = async (req, res) => {
   const { email, password } = req.body;
   const prisma = await getPrismaClient();
 
@@ -88,7 +119,7 @@ const loginHandler: RequestHandler = async (req, res) => {
 };
 
 // Logout
-const logoutHandler: RequestHandler = async (req, res) => {
+const logoutHandler = async (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
     maxAge: 0,
@@ -97,7 +128,7 @@ const logoutHandler: RequestHandler = async (req, res) => {
 };
 
 // Get current user (protected route)
-const getCurrentUserHandler: RequestHandler = async (req, res) => {
+const getCurrentUserHandler = async (req, res) => {
   try {
     const userId = (req as AuthenticatedRequest).user?.userId;
     const prisma = await getPrismaClient();
@@ -125,6 +156,28 @@ const getCurrentUserHandler: RequestHandler = async (req, res) => {
   }
 };
 
+// Get JWT token for WebSocket connections (protected route)
+const getTokenHandler = async (req, res) => {
+  try {
+    const userId = (req as AuthenticatedRequest).user?.userId;
+
+    if (!userId) {
+      res.status(401).json({ error: "User not authenticated" });
+      return;
+    }
+
+    // Generate a new token for WebSocket connections
+    const token = jwt.sign({ userId }, process.env.JWT_SECRET!, {
+      expiresIn: "1h",
+    });
+
+    res.json({ token });
+  } catch (error) {
+    console.error("Error generating token:", error);
+    res.status(500).json({ error: "Failed to generate token" });
+  }
+};
+
 // Public routes
 router.post("/register", registerHandler);
 router.post("/login", loginHandler);
@@ -132,5 +185,6 @@ router.post("/logout", logoutHandler);
 
 // Protected routes
 router.get("/me", authenticateToken, getCurrentUserHandler);
+router.get("/token", authenticateToken, getTokenHandler);
 
 export default router;

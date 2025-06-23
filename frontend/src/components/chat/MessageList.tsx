@@ -52,7 +52,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     );
   }
 
-  if (messages.length === 0) {
+  if (!messages || messages.length === 0) {
     return (
       <Box
         sx={{
@@ -188,7 +188,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
                   {isOwnMessage && (
                     <Box sx={{ display: "flex", alignItems: "center" }}>
-                      {message.readBy.length > 0 ? (
+                      {message.readBy && message.readBy.length > 0 ? (
                         <CheckCircleIcon
                           sx={{
                             fontSize: 16,

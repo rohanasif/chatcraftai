@@ -12,6 +12,17 @@ const sendInvitationsHandler: RequestHandler = async (req, res) => {
   const prisma = await getPrismaClient();
 
   try {
+    if (
+      !groupId ||
+      !inviteeEmails ||
+      !Array.isArray(inviteeEmails) ||
+      inviteeEmails.length === 0
+    ) {
+      res
+        .status(400)
+        .json({ error: "groupId and inviteeEmails[] are required" });
+      return;
+    }
     // Check if user is admin and group creator
     const group = await prisma.conversation.findFirst({
       where: {
@@ -48,7 +59,9 @@ const sendInvitationsHandler: RequestHandler = async (req, res) => {
     res.json({ success: true, message: "Invitations sent successfully" });
   } catch (error) {
     console.error("Failed to send invitations:", error);
-    res.status(500).json({ error: "Failed to send invitations" });
+    res.status(500).json({
+      error: "An unexpected error occurred while sending invitations.",
+    });
   }
 };
 
@@ -58,6 +71,10 @@ const validateInvitationHandler: RequestHandler = async (req, res) => {
   const prisma = await getPrismaClient();
 
   try {
+    if (!token) {
+      res.status(400).json({ error: "Invitation token is required" });
+      return;
+    }
     const validation = await EmailService.validateInvitationToken(token);
 
     if (!validation.valid) {
@@ -89,7 +106,9 @@ const validateInvitationHandler: RequestHandler = async (req, res) => {
     });
   } catch (error) {
     console.error("Failed to validate invitation:", error);
-    res.status(500).json({ error: "Failed to validate invitation" });
+    res.status(500).json({
+      error: "An unexpected error occurred while validating invitation.",
+    });
   }
 };
 
@@ -100,6 +119,10 @@ const acceptInvitationHandler: RequestHandler = async (req, res) => {
   const prisma = await getPrismaClient();
 
   try {
+    if (!token || !userId) {
+      res.status(400).json({ error: "token and userId are required" });
+      return;
+    }
     const validation = await EmailService.validateInvitationToken(token);
 
     if (!validation.valid) {
@@ -148,7 +171,18 @@ const acceptInvitationHandler: RequestHandler = async (req, res) => {
     res.json({ success: true, group: updatedGroup });
   } catch (error) {
     console.error("Failed to accept invitation:", error);
-    res.status(500).json({ error: "Failed to accept invitation" });
+    if (error && typeof error === "object" && "code" in error) {
+      const prismaError = error as { code: string };
+      if (prismaError.code === "P2002") {
+        res
+          .status(409)
+          .json({ error: "You are already a member of this group." });
+        return;
+      }
+    }
+    res.status(500).json({
+      error: "An unexpected error occurred while accepting invitation.",
+    });
   }
 };
 

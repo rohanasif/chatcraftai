@@ -10,6 +10,10 @@ const createDirectChatHandler: RequestHandler = async (req, res) => {
   const prisma = await getPrismaClient();
 
   try {
+    if (!userId || !targetEmail) {
+      res.status(400).json({ error: "userId and targetEmail are required" });
+      return;
+    }
     // Find the target user by email
     const targetUser = await prisma.user.findUnique({
       where: { email: targetEmail },
@@ -76,7 +80,18 @@ const createDirectChatHandler: RequestHandler = async (req, res) => {
     res.json(conversation);
   } catch (error) {
     console.error("Error creating direct chat:", error);
-    res.status(500).json({ error: "Failed to create direct chat" });
+    if (error && typeof error === "object" && "code" in error) {
+      const prismaError = error as { code: string };
+      if (prismaError.code === "P2002") {
+        res
+          .status(409)
+          .json({ error: "A direct chat with this user already exists." });
+        return;
+      }
+    }
+    res.status(500).json({
+      error: "An unexpected error occurred while creating direct chat.",
+    });
   }
 };
 
@@ -86,6 +101,15 @@ const createGroupChatHandler: RequestHandler = async (req, res) => {
   const prisma = await getPrismaClient();
 
   try {
+    if (
+      !title ||
+      !memberEmails ||
+      !Array.isArray(memberEmails) ||
+      memberEmails.length === 0
+    ) {
+      res.status(400).json({ error: "title and memberEmails[] are required" });
+      return;
+    }
     // Find all users by their emails
     const users = await prisma.user.findMany({
       where: {
@@ -130,7 +154,18 @@ const createGroupChatHandler: RequestHandler = async (req, res) => {
     res.json(conversation);
   } catch (error) {
     console.error("Error creating group chat:", error);
-    res.status(500).json({ error: "Failed to create group chat" });
+    if (error && typeof error === "object" && "code" in error) {
+      const prismaError = error as { code: string };
+      if (prismaError.code === "P2002") {
+        res
+          .status(409)
+          .json({ error: "A group chat with these members already exists." });
+        return;
+      }
+    }
+    res.status(500).json({
+      error: "An unexpected error occurred while creating group chat.",
+    });
   }
 };
 
@@ -140,13 +175,17 @@ const discoverGroupsHandler: RequestHandler = async (req, res) => {
   const prisma = await getPrismaClient();
 
   try {
+    if (!userId) {
+      res.status(400).json({ error: "userId is required" });
+      return;
+    }
     // First check if user exists
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (!user) {
-      res.status(500).json({ error: "Failed to discover groups" });
+      res.status(404).json({ error: "User not found" });
       return;
     }
 
@@ -181,7 +220,9 @@ const discoverGroupsHandler: RequestHandler = async (req, res) => {
     res.json(groups);
   } catch (error) {
     console.error("Error discovering groups:", error);
-    res.status(500).json({ error: "Failed to discover groups" });
+    res.status(500).json({
+      error: "An unexpected error occurred while discovering groups.",
+    });
   }
 };
 
@@ -192,6 +233,10 @@ const joinGroupHandler: RequestHandler = async (req, res) => {
   const prisma = await getPrismaClient();
 
   try {
+    if (!groupId || !userId) {
+      res.status(400).json({ error: "groupId and userId are required" });
+      return;
+    }
     // Check if group exists and is public
     const group = await prisma.conversation.findUnique({
       where: { id: groupId },
@@ -243,7 +288,18 @@ const joinGroupHandler: RequestHandler = async (req, res) => {
     res.json(updatedGroup);
   } catch (error) {
     console.error("Error joining group:", error);
-    res.status(500).json({ error: "Failed to join group" });
+    if (error && typeof error === "object" && "code" in error) {
+      const prismaError = error as { code: string };
+      if (prismaError.code === "P2002") {
+        res
+          .status(409)
+          .json({ error: "You are already a member of this group." });
+        return;
+      }
+    }
+    res
+      .status(500)
+      .json({ error: "An unexpected error occurred while joining group." });
   }
 };
 

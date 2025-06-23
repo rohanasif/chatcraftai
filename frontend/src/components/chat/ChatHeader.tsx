@@ -37,7 +37,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     const otherMember = conversation.members.find(
       (member) => member.id !== currentUser.id,
     );
-    return otherMember?.name || "Unknown User";
+    // If no other member found (chat with self), show current user's name
+    return otherMember?.name || currentUser.name || "Unknown User";
   };
 
   const getConversationSubtitle = () => {

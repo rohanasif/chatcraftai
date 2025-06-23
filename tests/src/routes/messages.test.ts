@@ -200,9 +200,9 @@ describe("Messages Routes", () => {
       const response = await request(app)
         .get("/api/messages/invalid-conversation-id")
         .set("Authorization", `Bearer ${authToken}`)
-        .expect(500);
+        .expect(404);
 
-      expect(response.body.error).toBe("Failed to fetch messages");
+      expect(response.body.error).toBe("Conversation not found");
     });
   });
 
@@ -287,9 +287,9 @@ describe("Messages Routes", () => {
       const response = await request(app)
         .get("/api/messages/invalid-conversation-id/analytics")
         .set("Authorization", `Bearer ${authToken}`)
-        .expect(500);
+        .expect(404);
 
-      expect(response.body.error).toBe("Failed to fetch analytics");
+      expect(response.body.error).toBe("Conversation not found");
     });
   });
 
@@ -349,7 +349,9 @@ describe("Messages Routes", () => {
         .send({ userId: user1.id })
         .expect(500);
 
-      expect(response.body.error).toBe("Failed to mark message as read");
+      expect(response.body.error).toBe(
+        "An unexpected error occurred while marking message as read."
+      );
     });
   });
 
@@ -431,9 +433,9 @@ describe("Messages Routes", () => {
       const response = await request(app)
         .get("/api/messages/invalid-conversation-id/suggestions")
         .set("Authorization", `Bearer ${authToken}`)
-        .expect(500);
+        .expect(404);
 
-      expect(response.body.error).toBe("Failed to get reply suggestions");
+      expect(response.body.error).toBe("Conversation not found");
     });
   });
 });

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User } from "../types";
 import { apiService } from "../services/api";
+import { wsService } from "../services/websocket";
 
 interface AuthContextType {
   user: User | null;
@@ -45,7 +46,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (
         error instanceof Error &&
         (error.message === "Access token required" ||
-          error.message === "Unauthorized")
+          error.message === "Unauthorized" ||
+          error.message === "User not found")
       ) {
         // This is expected when user is not authenticated
         setUser(null);
@@ -65,6 +67,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       const response = await apiService.login({ email, password });
+      // Reset WebSocket service for new connection
+      wsService.resetForLogin();
       setUser(response.user);
     } catch (error) {
       console.error("Login failed:", error);
@@ -95,10 +99,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       await apiService.logout();
+      // Clean up WebSocket connection
+      wsService.logout();
       setUser(null);
     } catch (error) {
       console.error("Logout failed:", error);
-      // Still clear user state even if logout request fails
+      // Still clear user state and WebSocket connection even if logout request fails
+      wsService.logout();
       setUser(null);
     }
   };
