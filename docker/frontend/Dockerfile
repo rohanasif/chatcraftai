@@ -9,13 +9,18 @@ WORKDIR /app
 # Copy package files first for caching
 COPY package*.json ./
 
-# Development stage
-FROM base AS development
-
 # Install dependencies
 RUN npm ci
 
-# Copy the rest of the app
+# Development stage
+FROM base AS development
+
+WORKDIR /app
+
+# Copy installed node_modules from base
+COPY --from=base /app/node_modules ./node_modules
+
+# Copy source code
 COPY . .
 
 # Expose dev port
@@ -27,10 +32,12 @@ CMD ["npm", "run", "dev"]
 # Production stage
 FROM base AS production
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+WORKDIR /app
 
-# Copy the rest of the app
+# Copy node_modules from base
+COPY --from=base /app/node_modules ./node_modules
+
+# Copy source code
 COPY . .
 
 # Build the application

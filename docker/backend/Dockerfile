@@ -11,11 +11,11 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Copy package files for dependency installation
+# Copy package files and Prisma schema
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
 
-# Install all dependencies (including dev dependencies for prepare scripts)
+# Install all dependencies
 RUN npm ci
 
 # Generate Prisma client
@@ -24,10 +24,15 @@ RUN npx prisma generate
 # Development stage
 FROM base AS development
 
+WORKDIR /app
+
+# Copy node_modules from base
+COPY --from=base /app/node_modules ./node_modules
+
 # Copy source code
 COPY backend/ .
 
-# Change ownership
+# Fix permissions
 RUN chown -R nodejs:nodejs /app
 
 # Expose port
@@ -37,25 +42,28 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
-# Start the application
+# Start dev server
 CMD ["npm", "run", "dev"]
 
 # Production stage
 FROM base AS production
 
+WORKDIR /app
+
+# Copy node_modules from base
+COPY --from=base /app/node_modules ./node_modules
+
 # Copy source code
 COPY backend/ .
 
-# Build TypeScript
+# Build app
 RUN npm run build
 
-# Remove dev dependencies for production
+# Remove dev dependencies
 RUN npm prune --production
 
-# Change ownership
+# Fix ownership and drop to non-root
 RUN chown -R nodejs:nodejs /app
-
-# Switch to non-root user
 USER nodejs
 
 # Expose port
@@ -65,5 +73,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
-# Start the application
+# Start app
 CMD ["npm", "start"]
