@@ -139,7 +139,8 @@ describe("AIService", () => {
       expect(result.summary).toBe(
         "A friendly conversation between participants."
       );
-      expect(result.sentiment).toEqual(["positive", "friendly"]);
+      expect(result.sentiment).toEqual(["neutral", "neutral", "neutral"]);
+      expect(result.sentiment).toHaveLength(mockMessages.length);
       expect(mockRedisSet).toHaveBeenCalledWith(
         expect.stringContaining("summary:"),
         JSON.stringify(result),

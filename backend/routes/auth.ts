@@ -2,7 +2,11 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { getPrismaClient } from "../lib/prisma";
-import { authenticateToken, AuthenticatedRequest } from "../middleware/auth";
+import {
+  authenticateToken,
+  AuthenticatedRequest,
+  requireAdmin,
+} from "../middleware/auth";
 
 const router = express.Router();
 
@@ -178,6 +182,102 @@ const getTokenHandler = async (req, res) => {
   }
 };
 
+// Admin: Get all users
+const getAllUsersHandler = async (req, res) => {
+  try {
+    const prisma = await getPrismaClient();
+
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar: true,
+        isAdmin: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            createdConversations: true,
+            memberConversations: true,
+            sentMessages: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.json({ users });
+  } catch (error) {
+    console.error("Error getting all users:", error);
+    res.status(500).json({ error: "Failed to get users" });
+  }
+};
+
+// Admin: Update user role
+const updateUserRoleHandler = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { isAdmin } = req.body;
+
+    if (typeof isAdmin !== "boolean") {
+      res.status(400).json({ error: "isAdmin must be a boolean" });
+      return;
+    }
+
+    const prisma = await getPrismaClient();
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { isAdmin },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar: true,
+        isAdmin: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    res.json({ user });
+  } catch (error) {
+    console.error("Error updating user role:", error);
+    res.status(500).json({ error: "Failed to update user role" });
+  }
+};
+
+// Admin: Delete user
+const deleteUserHandler = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const prisma = await getPrismaClient();
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    // Delete the user (this will cascade delete related data due to foreign key constraints)
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    res.json({ success: true, message: "User deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    res.status(500).json({ error: "Failed to delete user" });
+  }
+};
+
 // Public routes
 router.post("/register", registerHandler);
 router.post("/login", loginHandler);
@@ -186,5 +286,20 @@ router.post("/logout", logoutHandler);
 // Protected routes
 router.get("/me", authenticateToken, getCurrentUserHandler);
 router.get("/token", authenticateToken, getTokenHandler);
+
+// Admin-only routes
+router.get("/admin/users", authenticateToken, requireAdmin, getAllUsersHandler);
+router.put(
+  "/admin/users/:userId/role",
+  authenticateToken,
+  requireAdmin,
+  updateUserRoleHandler,
+);
+router.delete(
+  "/admin/users/:userId",
+  authenticateToken,
+  requireAdmin,
+  deleteUserHandler,
+);
 
 export default router;

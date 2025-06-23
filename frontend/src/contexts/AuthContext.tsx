@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { User } from "../types";
 import { apiService } from "../services/api";
 import { wsService } from "../services/websocket";
@@ -36,6 +37,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const refreshUser = async () => {
     try {
@@ -43,11 +45,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(response.user);
     } catch (error: unknown) {
       // Don't log authentication errors as they're expected when user is not logged in
+      const errorMessage = error instanceof Error ? error.message : "";
+      const errorStatus = (error as { status?: number })?.status;
+
       if (
-        error instanceof Error &&
-        (error.message === "Access token required" ||
-          error.message === "Unauthorized" ||
-          error.message === "User not found")
+        errorStatus === 401 ||
+        errorStatus === 403 ||
+        errorMessage === "Access token required" ||
+        errorMessage === "Unauthorized" ||
+        errorMessage === "User not found" ||
+        errorMessage === "Invalid token"
       ) {
         // This is expected when user is not authenticated
         setUser(null);
@@ -61,7 +68,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    refreshUser();
+    // Only check authentication if we're on a protected route
+    const pathname = window.location.pathname;
+    const isProtectedRoute = pathname.startsWith("/dashboard");
+
+    if (isProtectedRoute) {
+      refreshUser();
+    } else {
+      // For public routes, just set loading to false
+      setLoading(false);
+    }
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -70,6 +86,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Reset WebSocket service for new connection
       wsService.resetForLogin();
       setUser(response.user);
+      // Navigate to root and let middleware handle redirect
+      router.push("/");
     } catch (error) {
       console.error("Login failed:", error);
       throw error;
@@ -90,6 +108,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         avatar,
       });
       setUser(response.user);
+      // Navigate to root and let middleware handle redirect
+      router.push("/");
     } catch (error) {
       console.error("Registration failed:", error);
       throw error;
@@ -102,11 +122,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Clean up WebSocket connection
       wsService.logout();
       setUser(null);
+      // Navigate to root and let middleware handle redirect
+      router.push("/");
     } catch (error) {
       console.error("Logout failed:", error);
       // Still clear user state and WebSocket connection even if logout request fails
       wsService.logout();
       setUser(null);
+      // Navigate to root and let middleware handle redirect
+      router.push("/");
     }
   };
 

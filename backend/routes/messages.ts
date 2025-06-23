@@ -1,6 +1,6 @@
 import express, { RequestHandler } from "express";
 import { getPrismaClient } from "../lib/prisma";
-import { authenticateToken } from "../middleware/auth";
+import { authenticateToken, AuthenticatedRequest } from "../middleware/auth";
 import { AIService } from "../aiService";
 
 const router = express.Router();
@@ -73,20 +73,37 @@ const getMessagesHandler: RequestHandler = async (req, res) => {
 // Get conversation analytics with AI integration
 const getAnalyticsHandler: RequestHandler = async (req, res) => {
   const { conversationId } = req.params;
+  const userId = (req as AuthenticatedRequest).user?.userId;
+
   try {
     if (!conversationId) {
       res.status(400).json({ error: "conversationId is required" });
       return;
     }
+
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+
     const prisma = await getPrismaClient();
 
-    // First check if conversation exists
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
+    // First check if conversation exists and user is a member
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        members: {
+          some: {
+            id: userId,
+          },
+        },
+      },
     });
 
     if (!conversation) {
-      res.status(404).json({ error: "Conversation not found" });
+      res
+        .status(404)
+        .json({ error: "Conversation not found or access denied" });
       return;
     }
 
@@ -120,28 +137,38 @@ const getAnalyticsHandler: RequestHandler = async (req, res) => {
 
     let summary = "";
     let sentiment: string[] = [];
+    let sentimentTimeline: Array<{
+      timestamp: string;
+      sentiment: "positive" | "neutral" | "negative";
+      messageCount: number;
+    }> = [];
     let aiSuggestionsUsed = 0;
 
-    // Generate AI summary if conversation is inactive
-    if (isInactive && messages.length > 0) {
+    // Generate AI summary and sentiment analysis for all conversations with messages
+    if (messages.length > 0) {
       try {
         const aiResult = await AIService.summarizeConversation(messages);
         summary = aiResult.summary;
         sentiment = aiResult.sentiment;
+        sentimentTimeline = aiResult.sentimentTimeline || [];
       } catch (aiError) {
         console.error("AI summary generation failed:", aiError);
-        summary = "AI summary generation failed. Please try again later.";
+        summary = "AI analysis failed. Please try again later.";
+        // Provide default sentiment data if AI fails
+        sentiment = messages.map(() => "neutral");
+        sentimentTimeline = [];
       }
+    } else {
+      summary = "No messages in this conversation yet.";
+      sentiment = [];
+      sentimentTimeline = [];
     }
 
-    // Count AI suggestions used (this would need to be tracked in messages)
-    // For now, we'll estimate based on message patterns
-    aiSuggestionsUsed = Math.floor(messageCount * 0.1); // Rough estimate
+    // Count AI suggestions used (tracked via isAISuggestion field)
+    aiSuggestionsUsed = messages.filter((msg) => msg.isAISuggestion).length;
 
     res.json({
-      summary:
-        summary ||
-        "Conversation is still active. Summary will be available after 1 hour of inactivity.",
+      summary,
       stats: {
         messageCount,
         wordCount: totalWords,
@@ -150,6 +177,7 @@ const getAnalyticsHandler: RequestHandler = async (req, res) => {
         lastActivity: lastMessage?.createdAt,
       },
       sentiment,
+      sentimentTimeline,
     });
   } catch (error) {
     console.error("Failed to fetch analytics:", error);
@@ -207,21 +235,37 @@ const markMessageAsReadHandler: RequestHandler = async (req, res) => {
 const getReplySuggestionsHandler: RequestHandler = async (req, res) => {
   const { conversationId } = req.params;
   const { limit = 5 } = req.query;
+  const userId = (req as AuthenticatedRequest).user?.userId;
 
   try {
     if (!conversationId) {
       res.status(400).json({ error: "conversationId is required" });
       return;
     }
+
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+
     const prisma = await getPrismaClient();
 
-    // First check if conversation exists
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
+    // First check if conversation exists and user is a member
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        members: {
+          some: {
+            id: userId,
+          },
+        },
+      },
     });
 
     if (!conversation) {
-      res.status(404).json({ error: "Conversation not found" });
+      res
+        .status(404)
+        .json({ error: "Conversation not found or access denied" });
       return;
     }
 
@@ -261,6 +305,70 @@ const getReplySuggestionsHandler: RequestHandler = async (req, res) => {
   }
 };
 
+// Create a new message in a conversation
+const createMessageHandler: RequestHandler = async (req, res) => {
+  const { conversationId } = req.params;
+  const { content, isAISuggestion: rawIsAISuggestion } = req.body;
+  const userId = (req as AuthenticatedRequest).user?.userId;
+
+  // Default to false if not provided
+  const isAISuggestion =
+    typeof rawIsAISuggestion === "boolean" ? rawIsAISuggestion : false;
+
+  try {
+    if (!conversationId || !content) {
+      res
+        .status(400)
+        .json({ error: "conversationId and content are required" });
+      return;
+    }
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+    const prisma = await getPrismaClient();
+
+    // Check if conversation exists and user is a member
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        members: { some: { id: userId } },
+      },
+    });
+    if (!conversation) {
+      res
+        .status(404)
+        .json({ error: "Conversation not found or access denied" });
+      return;
+    }
+
+    // Create the message
+    const message = await prisma.message.create({
+      data: {
+        content,
+        senderId: userId,
+        conversationId,
+        isAISuggestion,
+      },
+      include: {
+        sender: {
+          select: { id: true, name: true, avatar: true },
+        },
+        readBy: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    res.status(201).json(message);
+  } catch (error) {
+    console.error("Failed to create message:", error);
+    res
+      .status(500)
+      .json({ error: "An unexpected error occurred while creating message." });
+  }
+};
+
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
 
@@ -268,5 +376,6 @@ router.get("/:conversationId", getMessagesHandler);
 router.get("/:conversationId/analytics", getAnalyticsHandler);
 router.post("/:messageId/read", markMessageAsReadHandler);
 router.get("/:conversationId/suggestions", getReplySuggestionsHandler);
+router.post("/:conversationId", createMessageHandler);
 
 export default router;

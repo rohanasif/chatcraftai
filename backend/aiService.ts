@@ -91,9 +91,6 @@ export class AIService {
       return JSON.parse(cachedStr);
     }
 
-    // Log the context sent to OpenAI
-    console.log("AI Suggestion Context:", context);
-
     const openaiClient = getOpenAIClient();
     const response = await openaiClient.chat.completions.create({
       model: "gpt-3.5-turbo",
@@ -112,12 +109,6 @@ export class AIService {
       response_format: { type: "json_object" },
     });
 
-    // Log the raw response from OpenAI
-    console.log(
-      "AI Suggestion Raw Response:",
-      response.choices[0].message.content,
-    );
-
     const content = response.choices[0].message.content || '{"replies":[]}';
     try {
       const parsedContent = JSON.parse(content);
@@ -133,9 +124,15 @@ export class AIService {
     }
   }
 
-  static async summarizeConversation(
-    messages: Message[],
-  ): Promise<{ summary: string; sentiment: string[] }> {
+  static async summarizeConversation(messages: Message[]): Promise<{
+    summary: string;
+    sentiment: string[];
+    sentimentTimeline?: Array<{
+      timestamp: string;
+      sentiment: "positive" | "neutral" | "negative";
+      messageCount: number;
+    }>;
+  }> {
     const redisClient = await getRedisClient();
     const context = messages
       .map((m) => `${m.sender.name}: ${m.content}`)
@@ -154,24 +151,80 @@ export class AIService {
       messages: [
         {
           role: "system",
-          content:
-            'Generate a 2-3 sentence summary of this conversation and analyze the sentiment over time. Return a JSON object with "summary" (string) and "sentiment" (array of strings) fields.',
+          content: `You are an AI assistant that analyzes conversations and provides sentiment analysis.
+
+For each message in the conversation, analyze the sentiment and provide:
+1. A 2-3 sentence summary of the overall conversation
+2. An array of sentiment labels for each message (only "positive", "neutral", or "negative")
+3. A sentiment timeline showing how sentiment changed over time
+
+Return a JSON object with this exact structure:
+{
+  "summary": "Brief summary of the conversation",
+  "sentiment": ["positive", "neutral", "negative", ...],
+  "sentimentTimeline": [
+    {
+      "timestamp": "2024-01-01T10:00:00Z",
+      "sentiment": "positive",
+      "messageCount": 5
+    }
+  ]
+}
+
+Guidelines:
+- sentiment array should have one entry per message in the conversation
+- sentimentTimeline should group messages into time periods and show sentiment trends
+- Use realistic timestamps based on message order
+- Be consistent with sentiment analysis - positive for happy/agreeable content, negative for angry/sad content, neutral for factual/informative content`,
         },
         {
           role: "user",
-          content: context,
+          content: `Analyze this conversation:\n\n${context}`,
         },
       ],
-      temperature: 0,
+      temperature: 0.1,
       response_format: { type: "json_object" },
     });
 
     const content =
-      response.choices[0].message.content || '{"summary":"","sentiment":[]}';
-    const result = JSON.parse(content);
+      response.choices[0].message.content ||
+      '{"summary":"","sentiment":[],"sentimentTimeline":[]}';
 
-    await redisClient.set(cacheKey, JSON.stringify(result), { EX: 86400 }); // Cache for 24 hours
+    try {
+      const result = JSON.parse(content);
 
-    return result;
+      // Validate and clean the result
+      const validatedResult = {
+        summary: result.summary || "No summary available",
+        sentiment: Array.isArray(result.sentiment) ? result.sentiment : [],
+        sentimentTimeline: Array.isArray(result.sentimentTimeline)
+          ? result.sentimentTimeline
+          : [],
+      };
+
+      // Ensure sentiment array has correct length
+      if (validatedResult.sentiment.length !== messages.length) {
+        // Generate default sentiment array if length doesn't match
+        validatedResult.sentiment = messages.map(() => "neutral");
+      }
+
+      // Validate sentiment values
+      validatedResult.sentiment = validatedResult.sentiment.map((s) =>
+        ["positive", "neutral", "negative"].includes(s) ? s : "neutral",
+      );
+
+      await redisClient.set(cacheKey, JSON.stringify(validatedResult), {
+        EX: 86400,
+      }); // Cache for 24 hours
+      return validatedResult;
+    } catch (error) {
+      console.error("Failed to parse AI summary response:", error);
+      // Return default structure if parsing fails
+      return {
+        summary: "AI analysis failed. Please try again later.",
+        sentiment: messages.map(() => "neutral"),
+        sentimentTimeline: [],
+      };
+    }
   }
 }

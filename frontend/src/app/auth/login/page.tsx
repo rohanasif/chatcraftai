@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../../contexts/AuthContext";
 import { isValidEmail } from "../../../utils";
@@ -40,7 +39,6 @@ export default function LoginPage() {
   );
 
   const { login } = useAuth();
-  const router = useRouter();
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -70,7 +68,7 @@ export default function LoginPage() {
     try {
       await login(email, password);
       toast.success("Login successful!");
-      router.push("/dashboard");
+      // Navigation is handled by AuthContext
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Login failed");
     } finally {

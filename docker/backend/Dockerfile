@@ -12,8 +12,8 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
 # Copy package files for dependency installation
-COPY package*.json ./
-COPY prisma ./prisma/
+COPY backend/package*.json ./
+COPY backend/prisma ./prisma/
 
 # Install all dependencies (including dev dependencies for prepare scripts)
 RUN npm ci
@@ -25,7 +25,7 @@ RUN npx prisma generate
 FROM base AS development
 
 # Copy source code
-COPY . .
+COPY backend/ .
 
 # Change ownership
 RUN chown -R nodejs:nodejs /app
@@ -37,14 +37,14 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
-# Start in development mode
+# Start the application
 CMD ["npm", "run", "dev"]
 
 # Production stage
 FROM base AS production
 
 # Copy source code
-COPY . .
+COPY backend/ .
 
 # Build TypeScript
 RUN npm run build

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../../contexts/AuthContext";
 import { isValidEmail } from "../../../utils";
@@ -51,7 +50,6 @@ export default function RegisterPage() {
   }>({});
 
   const { register } = useAuth();
-  const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -105,7 +103,7 @@ export default function RegisterPage() {
         formData.avatar || undefined,
       );
       toast.success("Registration successful!");
-      router.push("/dashboard");
+      // Navigation is handled by AuthContext
     } catch (error: unknown) {
       toast.error(
         error instanceof Error ? error.message : "Registration failed",

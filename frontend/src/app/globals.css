@@ -23,6 +23,13 @@ body {
     "Segoe UI",
     Arial,
     sans-serif;
+  background-color: rgb(249 250 251);
+  color: rgb(17 24 39);
+}
+
+.dark body {
+  background-color: rgb(17 24 39);
+  color: rgb(249 250 251);
 }
 
 #root {
@@ -37,18 +44,30 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background-color: rgb(243 244 246);
   border-radius: 8px;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background-color: rgb(31 41 55);
+}
+
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background-color: rgb(209 213 219);
   border-radius: 8px;
   transition: background-color 0.2s ease;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgb(75 85 99);
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background-color: rgb(156 163 175);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(107 114 128);
 }
 
 /* Autofill styles */
@@ -58,6 +77,14 @@ input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 1000px white inset;
   -webkit-text-fill-color: #1f2937;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #1f2937 inset;
+  -webkit-text-fill-color: #f9fafb;
 }
 
 /* Smooth transitions */
@@ -120,10 +147,115 @@ input:-webkit-autofill:active {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 56rem;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.dark .modal-content {
+  background-color: rgb(31 41 55);
+}
+
+/* Table styles */
+.table-container {
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(229 231 235);
+}
+
+.dark .table-container {
+  border-color: rgb(55 65 81);
+}
+
+.table {
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-header {
+  background-color: rgb(249 250 251);
+}
+
+.dark .table-header {
+  background-color: rgb(55 65 81);
+}
+
+.table-header th {
+  padding: 0.75rem 1.5rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(107 114 128);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dark .table-header th {
+  color: rgb(209 213 219);
+}
+
+.table-body {
+  background-color: white;
+}
+
+.dark .table-body {
+  background-color: rgb(31 41 55);
+}
+
+.table-row {
+  transition: background-color 0.2s ease;
+}
+
+.table-row:hover {
+  background-color: rgb(249 250 251);
+}
+
+.dark .table-row:hover {
+  background-color: rgb(55 65 81);
+}
+
+.table-cell {
+  padding: 1rem 1.5rem;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: rgb(17 24 39);
+}
+
+.dark .table-cell {
+  color: rgb(249 250 251);
+}
+
 /* Responsive utilities */
 @media (max-width: 768px) {
   .mobile-hidden {
     display: none !important;
+  }
+
+  .modal-content {
+    margin: 0 1rem;
+    max-width: 100%;
+  }
+
+  .table-container {
+    margin: 0 -1rem;
   }
 }
 

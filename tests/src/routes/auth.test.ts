@@ -248,4 +248,132 @@ describe("Auth Routes", () => {
       expect(response.body.error).toBe("User not found");
     });
   });
+
+  describe("Admin Routes", () => {
+    let adminToken: string;
+    let userToken: string;
+    let adminUser: any;
+    let regularUser: any;
+
+    beforeEach(async () => {
+      // Create admin user
+      const adminResponse = await request(app).post("/api/auth/register").send({
+        email: "admin@test.com",
+        password: "admin123",
+        name: "Admin User",
+        isAdmin: true,
+      });
+      adminUser = adminResponse.body.user;
+      adminToken = adminResponse.headers["set-cookie"]?.[0] || "";
+
+      // Create regular user
+      const userResponse = await request(app).post("/api/auth/register").send({
+        email: "user@test.com",
+        password: "user123",
+        name: "Regular User",
+        isAdmin: false,
+      });
+      regularUser = userResponse.body.user;
+      userToken = userResponse.headers["set-cookie"]?.[0] || "";
+    });
+
+    describe("GET /auth/admin/users", () => {
+      it("should allow admin to get all users", async () => {
+        const response = await request(app)
+          .get("/api/auth/admin/users")
+          .set("Cookie", adminToken);
+
+        expect(response.status).toBe(200);
+        expect(response.body.users).toBeDefined();
+        expect(Array.isArray(response.body.users)).toBe(true);
+        expect(response.body.users.length).toBeGreaterThan(0);
+      });
+
+      it("should deny regular user access to admin endpoint", async () => {
+        const response = await request(app)
+          .get("/api/auth/admin/users")
+          .set("Cookie", userToken);
+
+        expect(response.status).toBe(403);
+        expect(response.body.error).toBe("Admin access required");
+      });
+
+      it("should deny unauthenticated access", async () => {
+        const response = await request(app).get("/api/auth/admin/users");
+
+        expect(response.status).toBe(401);
+        expect(response.body.error).toBe("Access token required");
+      });
+    });
+
+    describe("PUT /auth/admin/users/:userId/role", () => {
+      it("should allow admin to update user role", async () => {
+        const response = await request(app)
+          .put(`/api/auth/admin/users/${regularUser.id}/role`)
+          .set("Cookie", adminToken)
+          .send({ isAdmin: true });
+
+        expect(response.status).toBe(200);
+        expect(response.body.user.isAdmin).toBe(true);
+      });
+
+      it("should deny regular user access to role update", async () => {
+        const response = await request(app)
+          .put(`/api/auth/admin/users/${adminUser.id}/role`)
+          .set("Cookie", userToken)
+          .send({ isAdmin: false });
+
+        expect(response.status).toBe(403);
+        expect(response.body.error).toBe("Admin access required");
+      });
+
+      it("should validate isAdmin parameter", async () => {
+        const response = await request(app)
+          .put(`/api/auth/admin/users/${regularUser.id}/role`)
+          .set("Cookie", adminToken)
+          .send({ isAdmin: "invalid" });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toBe("isAdmin must be a boolean");
+      });
+    });
+
+    describe("DELETE /auth/admin/users/:userId", () => {
+      it("should allow admin to delete user", async () => {
+        // Create a user to delete
+        const userToDelete = await request(app)
+          .post("/api/auth/register")
+          .send({
+            email: "delete@test.com",
+            password: "delete123",
+            name: "Delete User",
+          });
+
+        const response = await request(app)
+          .delete(`/api/auth/admin/users/${userToDelete.body.user.id}`)
+          .set("Cookie", adminToken);
+
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+      });
+
+      it("should deny regular user access to delete user", async () => {
+        const response = await request(app)
+          .delete(`/api/auth/admin/users/${adminUser.id}`)
+          .set("Cookie", userToken);
+
+        expect(response.status).toBe(403);
+        expect(response.body.error).toBe("Admin access required");
+      });
+
+      it("should return 404 for non-existent user", async () => {
+        const response = await request(app)
+          .delete("/api/auth/admin/users/non-existent-id")
+          .set("Cookie", adminToken);
+
+        expect(response.status).toBe(404);
+        expect(response.body.error).toBe("User not found");
+      });
+    });
+  });
 });

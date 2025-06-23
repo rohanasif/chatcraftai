@@ -2,7 +2,6 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { Sidebar } from "../../../../frontend/src/components/layout/Sidebar";
-import { AuthProvider } from "../../../../frontend/src/contexts/AuthContext";
 
 const user = {
   id: "user1",
@@ -17,15 +16,13 @@ const bob = {
   avatar: "",
 };
 
-jest.mock("../../../../frontend/src/contexts/AuthContext", () => {
-  const actual = jest.requireActual(
-    "../../../../frontend/src/contexts/AuthContext"
-  );
-  return {
-    ...actual,
-    useAuth: () => ({ user, logout: jest.fn() }),
-  };
-});
+// Mock the AuthContext to avoid Next.js router dependencies
+jest.mock("../../../../frontend/src/contexts/AuthContext", () => ({
+  useAuth: () => ({ user, logout: jest.fn() }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
 
 describe("Sidebar", () => {
   const conversations = [
@@ -54,19 +51,16 @@ describe("Sidebar", () => {
     },
   ];
 
-  const renderWithAuth = (component: React.ReactElement) => {
-    return render(<AuthProvider>{component}</AuthProvider>);
-  };
-
   it("renders user info and navigation", () => {
-    renderWithAuth(
+    render(
       <Sidebar
-        user={user}
         conversations={conversations}
         selectedConversationId={null}
         onSelectConversation={jest.fn()}
-        onCreateConversation={jest.fn()}
-        onLogout={jest.fn()}
+        onCreateDirectChat={jest.fn()}
+        onCreateGroupChat={jest.fn()}
+        onDiscoverGroups={jest.fn()}
+        onOpenAdminDashboard={jest.fn()}
       />
     );
 
@@ -77,14 +71,15 @@ describe("Sidebar", () => {
   it("calls onSelectConversation when conversation is clicked", () => {
     const onSelectConversation = jest.fn();
 
-    renderWithAuth(
+    render(
       <Sidebar
-        user={user}
         conversations={conversations}
         selectedConversationId={null}
         onSelectConversation={onSelectConversation}
-        onCreateConversation={jest.fn()}
-        onLogout={jest.fn()}
+        onCreateDirectChat={jest.fn()}
+        onCreateGroupChat={jest.fn()}
+        onDiscoverGroups={jest.fn()}
+        onOpenAdminDashboard={jest.fn()}
       />
     );
 

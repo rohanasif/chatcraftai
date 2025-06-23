@@ -84,6 +84,18 @@ describe("ConversationAnalytics", () => {
       "neutral",
       "positive",
     ],
+    sentimentTimeline: [
+      {
+        timestamp: "2024-01-15T10:00:00Z",
+        sentiment: "positive" as const,
+        messageCount: 5,
+      },
+      {
+        timestamp: "2024-01-15T10:30:00Z",
+        sentiment: "neutral" as const,
+        messageCount: 3,
+      },
+    ],
   };
 
   it("renders summary, stats, and sentiment chart", () => {

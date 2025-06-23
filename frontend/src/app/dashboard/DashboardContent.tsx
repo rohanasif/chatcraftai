@@ -9,6 +9,7 @@ import { MessageList } from "../../components/chat/MessageList";
 import { MessageInput } from "../../components/chat/MessageInput";
 import { CreateDirectChatModal } from "../../components/modals/CreateDirectChatModal";
 import { CreateGroupModal } from "../../components/modals/CreateGroupModal";
+import { AdminDashboard } from "../../components/admin/AdminDashboard";
 import { ConversationAnalytics } from "../../components/analytics/ConversationAnalytics";
 import {
   Conversation,
@@ -49,6 +50,7 @@ export default function DashboardContent() {
   // Modal states
   const [showDirectChatModal, setShowDirectChatModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
 
   // Loading states
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -219,15 +221,32 @@ export default function DashboardContent() {
   };
 
   // Send message
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (
+    content: string,
+    isAISuggestion: boolean = false,
+  ) => {
     if (!selectedConversation || !user) return;
 
     try {
-      // Send via WebSocket
-      wsService.sendMessage(selectedConversation.id, content);
-
+      // Send via WebSocket if connected
+      if (wsService.isConnected()) {
+        wsService.send({
+          type: "message",
+          conversationId: selectedConversation.id,
+          content,
+          isAISuggestion,
+        });
+      } else {
+        // Fallback to REST API
+        await apiService.sendMessage(
+          selectedConversation.id,
+          content,
+          isAISuggestion,
+        );
+        // Reload messages
+        loadMessages(selectedConversation.id);
+      }
       // Don't add optimistically - wait for WebSocket confirmation
-      // The WebSocket will provide the real message from the server
     } catch (error: unknown) {
       toast.error("Failed to send message");
       console.error("Error sending message:", error);
@@ -277,24 +296,29 @@ export default function DashboardContent() {
     }
   };
 
-  // Create group chat
-  const handleCreateGroup = async (title: string, memberEmails: string[]) => {
-    if (!user) return;
+  // Create group chat (updated for new API)
+  // const handleCreateGroup = async (
+  //   title: string,
+  //   memberEmails: string[],
+  //   isPublic: boolean,
+  // ) => {
+  //   if (!user) return;
 
-    try {
-      const conversation = await apiService.createGroupChat({
-        userId: user.id,
-        title,
-        memberEmails,
-      });
+  //   try {
+  //     const conversation = await apiService.createGroupChat({
+  //       title,
+  //       memberEmails,
+  //       isPublic,
+  //     });
 
-      setConversations((prev) => [conversation, ...prev]);
-      setSelectedConversation(conversation);
-      setShowGroupModal(false);
-    } catch (error: unknown) {
-      throw error;
-    }
-  };
+  //     setConversations((prev) => [conversation, ...prev]);
+  //     setSelectedConversation(conversation);
+  //     setShowGroupModal(false);
+  //     toast.success("Group created successfully!");
+  //   } catch (error: unknown) {
+  //     throw error;
+  //   }
+  // };
 
   // Show analytics
   const handleShowAnalytics = async () => {
@@ -332,6 +356,15 @@ export default function DashboardContent() {
       toast.error("Failed to discover groups");
       console.error("Error discovering groups:", error);
     }
+  };
+
+  // Handle admin dashboard
+  const handleOpenAdminDashboard = () => {
+    setShowAdminDashboard(true);
+  };
+
+  const handleCloseAdminDashboard = () => {
+    setShowAdminDashboard(false);
   };
 
   if (authLoading) {
@@ -405,6 +438,7 @@ export default function DashboardContent() {
           onCreateDirectChat={() => setShowDirectChatModal(true)}
           onCreateGroupChat={() => setShowGroupModal(true)}
           onDiscoverGroups={handleDiscoverGroups}
+          onOpenAdminDashboard={handleOpenAdminDashboard}
         />
       </Box>
 
@@ -417,6 +451,7 @@ export default function DashboardContent() {
           onCreateDirectChat={() => setShowDirectChatModal(true)}
           onCreateGroupChat={() => setShowGroupModal(true)}
           onDiscoverGroups={handleDiscoverGroups}
+          onOpenAdminDashboard={handleOpenAdminDashboard}
           isMobile={true}
           onClose={() => setIsSidebarOpen(false)}
         />
@@ -523,6 +558,16 @@ export default function DashboardContent() {
                     Create Group
                   </Button>
                 )}
+                {user.isAdmin && (
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    onClick={handleOpenAdminDashboard}
+                    sx={{ py: 1.5, fontSize: "1rem", fontWeight: 600 }}
+                  >
+                    Admin Dashboard
+                  </Button>
+                )}
               </Box>
             </Paper>
           </Box>
@@ -539,7 +584,15 @@ export default function DashboardContent() {
       <CreateGroupModal
         isOpen={showGroupModal}
         onClose={() => setShowGroupModal(false)}
-        onCreateGroup={handleCreateGroup}
+        onGroupCreated={() => {
+          loadConversations();
+          setShowGroupModal(false);
+        }}
+      />
+
+      <AdminDashboard
+        isOpen={showAdminDashboard}
+        onClose={handleCloseAdminDashboard}
       />
 
       {analytics && (

@@ -66,6 +66,18 @@ const mockOpenAI = jest.fn().mockImplementation(() => {
                     content: JSON.stringify({
                       summary: "A friendly conversation between participants.",
                       sentiment: ["positive", "friendly"],
+                      sentimentTimeline: [
+                        {
+                          timestamp: "2024-01-15T10:00:00Z",
+                          sentiment: "positive",
+                          messageCount: 5,
+                        },
+                        {
+                          timestamp: "2024-01-15T10:30:00Z",
+                          sentiment: "neutral",
+                          messageCount: 3,
+                        },
+                      ],
                     }),
                   },
                 },

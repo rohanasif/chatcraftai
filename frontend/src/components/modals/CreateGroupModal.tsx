@@ -11,55 +11,66 @@ import {
   Typography,
   Box,
   Alert,
-  Chip,
+  FormControlLabel,
+  Checkbox,
   IconButton,
 } from "@mui/material";
-import {
-  Group as GroupIcon,
-  Add as AddIcon,
-  Close as CloseIcon,
-} from "@mui/icons-material";
-import { isValidEmail } from "../../utils";
+import { Group as GroupIcon, Close as CloseIcon } from "@mui/icons-material";
+import { useAuth } from "../../contexts/AuthContext";
+import { apiService } from "../../services/api";
 
 interface CreateGroupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateGroup: (title: string, memberEmails: string[]) => Promise<void>;
+  onGroupCreated: () => void;
 }
 
 export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   isOpen,
   onClose,
-  onCreateGroup,
+  onGroupCreated,
 }) => {
+  const { user } = useAuth();
   const [title, setTitle] = useState("");
-  const [memberEmails, setMemberEmails] = useState<string[]>([]);
-  const [currentEmail, setCurrentEmail] = useState("");
+  const [memberEmails, setMemberEmails] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Only show for admin users
+  if (!user?.isAdmin) {
+    return null;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!title.trim()) {
-      setError("Please enter a group title");
-      return;
-    }
-
-    if (memberEmails.length === 0) {
-      setError("Please add at least one member");
-      return;
-    }
-
-    setLoading(true);
     setError("");
+    setLoading(true);
 
     try {
-      await onCreateGroup(title.trim(), memberEmails);
+      const emails = memberEmails
+        .split(",")
+        .map((email) => email.trim())
+        .filter((email) => email.length > 0);
+
+      if (emails.length === 0) {
+        setError("Please enter at least one member email");
+        return;
+      }
+
+      await apiService.createGroupChat({
+        title,
+        memberEmails: emails,
+        isPublic,
+      });
+
       setTitle("");
-      setMemberEmails([]);
+      setMemberEmails("");
+      setIsPublic(false);
+      onGroupCreated();
       onClose();
-    } catch (error: unknown) {
+    } catch (error) {
+      console.error("Failed to create group:", error);
       setError(
         error instanceof Error ? error.message : "Failed to create group",
       );
@@ -68,45 +79,11 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
     }
   };
 
-  const handleAddMember = () => {
-    const email = currentEmail.trim();
-
-    if (!email) {
-      setError("Please enter an email address");
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      setError("Please enter a valid email address");
-      return;
-    }
-
-    if (memberEmails.includes(email)) {
-      setError("This email is already added");
-      return;
-    }
-
-    setMemberEmails([...memberEmails, email]);
-    setCurrentEmail("");
-    setError("");
-  };
-
-  const handleRemoveMember = (emailToRemove: string) => {
-    setMemberEmails(memberEmails.filter((email) => email !== emailToRemove));
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAddMember();
-    }
-  };
-
   const handleClose = () => {
     if (!loading) {
       setTitle("");
-      setMemberEmails([]);
-      setCurrentEmail("");
+      setMemberEmails("");
+      setIsPublic(false);
       setError("");
       onClose();
     }
@@ -125,20 +102,27 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
       }}
     >
       <DialogTitle sx={{ pb: 1 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <GroupIcon color="primary" />
-          <Typography variant="h6" component="span">
-            Create Group Chat
-          </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <GroupIcon color="primary" />
+            <Typography variant="h6" component="span">
+              Create Group Chat
+            </Typography>
+          </Box>
+          <IconButton onClick={handleClose} disabled={loading}>
+            <CloseIcon />
+          </IconButton>
         </Box>
       </DialogTitle>
 
       <form onSubmit={handleSubmit}>
         <DialogContent sx={{ pb: 2 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Create a new group chat and invite members by their email addresses.
-          </Typography>
-
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
@@ -147,56 +131,36 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
 
           <TextField
             fullWidth
-            label="Group name"
+            label="Group Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Enter group name"
-            disabled={loading}
+            placeholder="Enter group title"
             required
-            autoFocus
             sx={{ mb: 3 }}
           />
 
-          <Typography variant="subtitle2" gutterBottom>
-            Add Members ({memberEmails.length})
-          </Typography>
+          <TextField
+            fullWidth
+            label="Member Emails (comma-separated)"
+            value={memberEmails}
+            onChange={(e) => setMemberEmails(e.target.value)}
+            placeholder="email1@example.com, email2@example.com"
+            multiline
+            rows={3}
+            required
+            sx={{ mb: 3 }}
+          />
 
-          <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-            <TextField
-              fullWidth
-              label="Email address"
-              type="email"
-              value={currentEmail}
-              onChange={(e) => setCurrentEmail(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Enter email address"
-              disabled={loading}
-              size="small"
-            />
-            <IconButton
-              onClick={handleAddMember}
-              disabled={loading || !currentEmail.trim()}
-              color="primary"
-              sx={{ flexShrink: 0 }}
-            >
-              <AddIcon />
-            </IconButton>
-          </Box>
-
-          {memberEmails.length > 0 && (
-            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              {memberEmails.map((email, index) => (
-                <Chip
-                  key={index}
-                  label={email}
-                  onDelete={() => handleRemoveMember(email)}
-                  deleteIcon={<CloseIcon />}
-                  size="small"
-                  variant="outlined"
-                />
-              ))}
-            </Box>
-          )}
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                color="primary"
+              />
+            }
+            label="Make group public (discoverable by other users)"
+          />
         </DialogContent>
 
         <DialogActions sx={{ p: 3, pt: 0 }}>
@@ -210,7 +174,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
           <Button
             type="submit"
             variant="contained"
-            disabled={loading || !title.trim() || memberEmails.length === 0}
+            disabled={loading}
             sx={{ minWidth: 100 }}
           >
             {loading ? "Creating..." : "Create Group"}

@@ -1,12 +1,17 @@
 import express, { RequestHandler } from "express";
 import { getPrismaClient } from "../lib/prisma";
-import { authenticateToken } from "../middleware/auth";
+import {
+  authenticateToken,
+  requireAdmin,
+  AuthenticatedRequest,
+} from "../middleware/auth";
 
 const router = express.Router();
 
 // Create direct chat
 const createDirectChatHandler: RequestHandler = async (req, res) => {
-  const { userId, targetEmail } = req.body;
+  const { targetEmail } = req.body;
+  const userId = (req as AuthenticatedRequest).user?.userId;
   const prisma = await getPrismaClient();
 
   try {
@@ -98,6 +103,7 @@ const createDirectChatHandler: RequestHandler = async (req, res) => {
 // Create group chat (admin only)
 const createGroupChatHandler: RequestHandler = async (req, res) => {
   const { title, memberEmails, isPublic } = req.body;
+  const userId = (req as AuthenticatedRequest).user?.userId;
   const prisma = await getPrismaClient();
 
   try {
@@ -110,6 +116,7 @@ const createGroupChatHandler: RequestHandler = async (req, res) => {
       res.status(400).json({ error: "title and memberEmails[] are required" });
       return;
     }
+
     // Find all users by their emails
     const users = await prisma.user.findMany({
       where: {
@@ -136,11 +143,21 @@ const createGroupChatHandler: RequestHandler = async (req, res) => {
         title,
         isGroup: true,
         isPublic: isPublic || false,
+        creator: {
+          connect: { id: userId },
+        },
         members: {
           connect: memberIds.map((id: string) => ({ id })),
         },
       },
       include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
         members: {
           select: {
             id: true,
@@ -198,6 +215,13 @@ const discoverGroupsHandler: RequestHandler = async (req, res) => {
         },
       },
       include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
         members: {
           select: {
             id: true,
@@ -229,14 +253,27 @@ const discoverGroupsHandler: RequestHandler = async (req, res) => {
 // Join group
 const joinGroupHandler: RequestHandler = async (req, res) => {
   const { groupId } = req.params;
-  const { userId } = req.body;
+  const { userId: targetUserId } = req.body;
   const prisma = await getPrismaClient();
 
   try {
-    if (!groupId || !userId) {
+    if (!groupId || !targetUserId) {
       res.status(400).json({ error: "groupId and userId are required" });
       return;
     }
+
+    // Check if target user exists
+    const targetUser = await prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+
+    if (!targetUser) {
+      res
+        .status(500)
+        .json({ error: "An unexpected error occurred while joining group." });
+      return;
+    }
+
     // Check if group exists and is public
     const group = await prisma.conversation.findUnique({
       where: { id: groupId },
@@ -252,7 +289,7 @@ const joinGroupHandler: RequestHandler = async (req, res) => {
       where: {
         id: groupId,
         members: {
-          some: { id: userId },
+          some: { id: targetUserId },
         },
       },
     });
@@ -267,10 +304,17 @@ const joinGroupHandler: RequestHandler = async (req, res) => {
       where: { id: groupId },
       data: {
         members: {
-          connect: { id: userId },
+          connect: { id: targetUserId },
         },
       },
       include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
         members: {
           select: {
             id: true,
@@ -326,6 +370,13 @@ const listConversationsHandler: RequestHandler = async (req, res) => {
         },
       },
       include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
         members: {
           select: {
             id: true,
@@ -410,7 +461,7 @@ const getUnreadCountHandler: RequestHandler = async (req, res) => {
 // Mark conversation as read
 const markAsReadHandler: RequestHandler = async (req, res) => {
   const { conversationId } = req.params;
-  const { userId } = req.body;
+  const userId = (req as AuthenticatedRequest).user?.userId;
   const prisma = await getPrismaClient();
 
   try {
@@ -457,15 +508,200 @@ const markAsReadHandler: RequestHandler = async (req, res) => {
   }
 };
 
+// Admin: Get all groups for management
+const getAllGroupsHandler: RequestHandler = async (req, res) => {
+  const prisma = await getPrismaClient();
+
+  try {
+    const groups = await prisma.conversation.findMany({
+      where: {
+        isGroup: true,
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
+        members: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
+        _count: {
+          select: {
+            members: true,
+            messages: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.json(groups);
+  } catch (error) {
+    console.error("Error getting all groups:", error);
+    res.status(500).json({
+      error: "An unexpected error occurred while fetching groups.",
+    });
+  }
+};
+
+// Admin: Update group settings
+const updateGroupHandler: RequestHandler = async (req, res) => {
+  const { groupId } = req.params;
+  const { title, isPublic, memberEmails } = req.body;
+  const prisma = await getPrismaClient();
+
+  try {
+    if (!groupId) {
+      res.status(400).json({ error: "groupId is required" });
+      return;
+    }
+
+    // Check if group exists
+    const existingGroup = await prisma.conversation.findUnique({
+      where: { id: groupId },
+    });
+
+    if (!existingGroup || !existingGroup.isGroup) {
+      res.status(404).json({ error: "Group not found" });
+      return;
+    }
+
+    const updateData: {
+      title?: string;
+      isPublic?: boolean;
+      members?: { set: { id: string }[] };
+    } = {};
+
+    if (title !== undefined) {
+      updateData.title = title;
+    }
+
+    if (isPublic !== undefined) {
+      updateData.isPublic = isPublic;
+    }
+
+    // Handle member updates if provided
+    if (memberEmails && Array.isArray(memberEmails)) {
+      // Find all users by their emails
+      const users = await prisma.user.findMany({
+        where: {
+          email: { in: memberEmails },
+        },
+        select: { id: true, email: true },
+      });
+
+      if (users.length !== memberEmails.length) {
+        const foundEmails = users.map((user) => user.email);
+        const missingEmails = memberEmails.filter(
+          (email) => !foundEmails.includes(email),
+        );
+        res.status(404).json({
+          error: `Users not found: ${missingEmails.join(", ")}`,
+        });
+        return;
+      }
+
+      const memberIds = users.map((user) => user.id);
+      updateData.members = {
+        set: memberIds.map((id: string) => ({ id })),
+      };
+    }
+
+    const updatedGroup = await prisma.conversation.update({
+      where: { id: groupId },
+      data: updateData,
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
+        members: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
+        _count: {
+          select: {
+            members: true,
+            messages: true,
+          },
+        },
+      },
+    });
+
+    res.json(updatedGroup);
+  } catch (error) {
+    console.error("Error updating group:", error);
+    res.status(500).json({
+      error: "An unexpected error occurred while updating group.",
+    });
+  }
+};
+
+// Admin: Delete group
+const deleteGroupHandler: RequestHandler = async (req, res) => {
+  const { groupId } = req.params;
+  const prisma = await getPrismaClient();
+
+  try {
+    if (!groupId) {
+      res.status(400).json({ error: "groupId is required" });
+      return;
+    }
+
+    // Check if group exists
+    const existingGroup = await prisma.conversation.findUnique({
+      where: { id: groupId },
+    });
+
+    if (!existingGroup || !existingGroup.isGroup) {
+      res.status(404).json({ error: "Group not found" });
+      return;
+    }
+
+    // Delete the group (this will cascade delete messages due to foreign key constraints)
+    await prisma.conversation.delete({
+      where: { id: groupId },
+    });
+
+    res.json({ success: true, message: "Group deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting group:", error);
+    res.status(500).json({
+      error: "An unexpected error occurred while deleting group.",
+    });
+  }
+};
+
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
 
+// Routes that require user authentication
 router.post("/direct", createDirectChatHandler);
-router.post("/group", createGroupChatHandler);
 router.get("/discover/:userId", discoverGroupsHandler);
 router.post("/:groupId/join", joinGroupHandler);
 router.get("/:userId", listConversationsHandler);
 router.get("/:userId/unread", getUnreadCountHandler);
 router.post("/:conversationId/read", markAsReadHandler);
+
+// Admin-only routes
+router.post("/group", requireAdmin, createGroupChatHandler);
+router.get("/admin/groups", requireAdmin, getAllGroupsHandler);
+router.put("/admin/groups/:groupId", requireAdmin, updateGroupHandler);
+router.delete("/admin/groups/:groupId", requireAdmin, deleteGroupHandler);
 
 export default router;

@@ -12,7 +12,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - chatcraftai-network
     healthcheck:
@@ -58,8 +57,8 @@ services:
   # Backend API (Node.js + Prisma)
   backend:
     build:
-      context: ../backend
-      dockerfile: ../docker/backend/Dockerfile
+      context: ..
+      dockerfile: docker/backend/Dockerfile
       target: development # Use development stage for dev environment
     container_name: chatcraftai-backend
     env_file:

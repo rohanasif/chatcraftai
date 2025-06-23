@@ -189,6 +189,66 @@ class ApiService {
       body: JSON.stringify({ userId }),
     });
   }
+
+  // Admin endpoints
+  async getAllUsers(): Promise<{ users: User[] }> {
+    return this.request("/auth/admin/users");
+  }
+
+  async updateUserRole(
+    userId: string,
+    isAdmin: boolean,
+  ): Promise<{ user: User }> {
+    return this.request(`/auth/admin/users/${userId}/role`, {
+      method: "PUT",
+      body: JSON.stringify({ isAdmin }),
+    });
+  }
+
+  async deleteUser(
+    userId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.request(`/auth/admin/users/${userId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async getAllGroups(): Promise<Conversation[]> {
+    return this.request("/conversations/admin/groups");
+  }
+
+  async updateGroup(
+    groupId: string,
+    data: {
+      title?: string;
+      isPublic?: boolean;
+      memberEmails?: string[];
+    },
+  ): Promise<Conversation> {
+    return this.request(`/conversations/admin/groups/${groupId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteGroup(
+    groupId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.request(`/conversations/admin/groups/${groupId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async sendMessage(
+    conversationId: string,
+    content: string,
+    isAISuggestion: boolean = false,
+  ): Promise<Message> {
+    return this.request(`/messages/${conversationId}`, {
+      method: "POST",
+      body: JSON.stringify({ content, isAISuggestion }),
+    });
+  }
 }
 
 export const apiService = new ApiService();

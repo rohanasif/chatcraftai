@@ -209,6 +209,7 @@ describe("Messages Routes", () => {
   describe("GET /api/messages/:conversationId/analytics", () => {
     let user1: any;
     let user2: any;
+    let user3: any;
     let conversation: any;
     let authToken: string;
 
@@ -220,6 +221,10 @@ describe("Messages Routes", () => {
       user2 = await createTestUser({
         email: "user2@example.com",
         name: "User 2",
+      });
+      user3 = await createTestUser({
+        email: "user3@example.com",
+        name: "User 3",
       });
       conversation = await createTestConversation({}, [user1, user2]);
 
@@ -239,7 +244,7 @@ describe("Messages Routes", () => {
       authToken = generateToken(user1.id);
     });
 
-    it("should return conversation analytics", async () => {
+    it("should return conversation analytics for conversation member", async () => {
       const response = await request(app)
         .get(`/api/messages/${conversation.id}/analytics`)
         .set("Authorization", `Bearer ${authToken}`)
@@ -248,12 +253,26 @@ describe("Messages Routes", () => {
       expect(response.body).toHaveProperty("summary");
       expect(response.body).toHaveProperty("stats");
       expect(response.body).toHaveProperty("sentiment");
+      expect(response.body).toHaveProperty("sentimentTimeline");
 
       expect(response.body.stats).toHaveProperty("messageCount");
       expect(response.body.stats).toHaveProperty("wordCount");
       expect(response.body.stats).toHaveProperty("aiSuggestionsUsed");
       expect(response.body.stats).toHaveProperty("isInactive");
       expect(response.body.stats).toHaveProperty("lastActivity");
+    });
+
+    it("should deny access to non-member users", async () => {
+      const nonMemberToken = generateToken(user3.id);
+
+      const response = await request(app)
+        .get(`/api/messages/${conversation.id}/analytics`)
+        .set("Authorization", `Bearer ${nonMemberToken}`)
+        .expect(404);
+
+      expect(response.body.error).toBe(
+        "Conversation not found or access denied"
+      );
     });
 
     it("should calculate correct message count", async () => {
@@ -275,6 +294,15 @@ describe("Messages Routes", () => {
       expect(response.body.stats.wordCount).toBe(7);
     });
 
+    it("should include sentimentTimeline in response", async () => {
+      const response = await request(app)
+        .get(`/api/messages/${conversation.id}/analytics`)
+        .set("Authorization", `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(Array.isArray(response.body.sentimentTimeline)).toBe(true);
+    });
+
     it("should return 401 without authentication", async () => {
       const response = await request(app)
         .get(`/api/messages/${conversation.id}/analytics`)
@@ -289,7 +317,9 @@ describe("Messages Routes", () => {
         .set("Authorization", `Bearer ${authToken}`)
         .expect(404);
 
-      expect(response.body.error).toBe("Conversation not found");
+      expect(response.body.error).toBe(
+        "Conversation not found or access denied"
+      );
     });
   });
 
@@ -435,7 +465,9 @@ describe("Messages Routes", () => {
         .set("Authorization", `Bearer ${authToken}`)
         .expect(404);
 
-      expect(response.body.error).toBe("Conversation not found");
+      expect(response.body.error).toBe(
+        "Conversation not found or access denied"
+      );
     });
   });
 });

@@ -19,6 +19,7 @@ export interface Message {
     id: string;
     name: string;
   }[];
+  isAISuggestion?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -54,6 +55,11 @@ export interface ConversationAnalytics {
     lastActivity?: string;
   };
   sentiment: string[];
+  sentimentTimeline?: {
+    timestamp: string;
+    sentiment: "positive" | "neutral" | "negative";
+    messageCount: number;
+  }[];
 }
 
 export interface WebSocketMessage {

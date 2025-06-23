@@ -1,69 +1,269 @@
 # ChatCraftAI Docker Setup
 
-This directory contains the Docker configuration for the ChatCraftAI application, providing both development and production environments.
+This directory contains the Docker configuration for ChatCraftAI, a real-time AI-augmented messaging platform.
 
-## 🏗️ Architecture
+## Quick Start
 
-The application consists of the following services:
+### Initial Setup (First Time Only)
 
-- **PostgreSQL**: Primary database for user data and conversations
-- **Redis**: Caching and session storage
-- **Backend**: Node.js API with Prisma ORM
-- **Frontend**: Next.js React application
-- **Nginx**: Reverse proxy (production only)
-
-## 🚀 Quick Start
-
-### Development Environment
-
-1. **Clone the repository and navigate to the docker directory:**
+1. **Build and start all services:**
 
    ```bash
-   cd docker
+   docker compose up --build
    ```
 
-2. **Set up environment variables:**
+2. **Seed the database with initial users (run this once after containers are up):**
 
    ```bash
-   # Backend environment
-   cp ../backend/.env.example ../backend/.env
-   # Edit ../backend/.env with your configuration
-
-   # Frontend environment
-   cp ../frontend/.env.local.example ../frontend/.env.local
-   # Edit ../frontend/.env.local with your configuration
+   docker exec chatcraftai-backend npx prisma db seed
    ```
 
-3. **Start the development environment:**
-
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **Access the application:**
+3. **Access the application:**
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:3001
    - PostgreSQL: localhost:5432
    - Redis: localhost:6379
 
-### Production Environment
+### Default Users (after seeding)
 
-1. **Set up environment variables:**
+- **Admin User:**
 
-   ```bash
-   export POSTGRES_USER=your_db_user
-   export POSTGRES_PASSWORD=your_secure_password
-   ```
+  - Email: `admin@chatcraft.com`
+  - Password: `admin123`
+  - Role: Administrator
 
-2. **Start the production environment:**
+- **Regular Users:**
+  - Email: `user1@chatcraft.com`
+  - Password: `user123`
+  - Email: `user2@chatcraft.com`
+  - Password: `user123`
 
-   ```bash
-   docker-compose -f docker-compose.prod.yml up -d
-   ```
+## Container Management
 
-3. **Access the application:**
-   - Application: http://localhost (via Nginx)
-   - HTTPS: https://localhost (if SSL configured)
+### Start Services
+
+```bash
+docker compose up
+```
+
+### Stop Services
+
+```bash
+docker compose down
+```
+
+### Restart Services
+
+```bash
+docker compose restart
+```
+
+### View Logs
+
+```bash
+# All services
+docker compose logs
+
+# Specific service
+docker compose logs backend
+docker compose logs frontend
+docker compose logs postgres
+```
+
+### Access Container Shell
+
+```bash
+# Backend container
+docker exec -it chatcraftai-backend sh
+
+# Frontend container
+docker exec -it chatcraftai-frontend sh
+
+# PostgreSQL container
+docker exec -it chatcraftai-postgres psql -U postgres -d chatcraftai
+```
+
+## Data Persistence
+
+### Database Data
+
+- PostgreSQL data is persisted in the `postgres_data` volume
+- **Users and data will persist across container restarts**
+- Data is only lost when the volume is explicitly removed
+
+### Redis Data
+
+- Redis data is persisted in the `redis_data` volume
+- Session data and cache will persist across restarts
+
+### Node Modules
+
+- Backend and frontend node_modules are cached in separate volumes
+- This speeds up container startup after the initial build
+
+## Seeding Strategy
+
+### Initial Seeding
+
+- **Build containers once:** `docker compose up --build`
+- **Seed at runtime:** `docker exec chatcraftai-backend npx prisma db seed`
+- **Users persist** across all subsequent `docker compose up/down` cycles
+
+### When to Re-seed
+
+- Only re-seed if you want to reset all data to initial state
+- To re-seed, run: `docker exec chatcraftai-backend npx prisma db seed`
+
+### Data Reset
+
+If you need to completely reset the database:
+
+```bash
+# Stop containers
+docker compose down
+
+# Remove volumes (WARNING: This deletes all data)
+docker volume rm chatcraftai_postgres_data chatcraftai_redis_data
+
+# Rebuild and start
+docker compose up --build
+
+# Re-seed
+docker exec chatcraftai-backend npx prisma db seed
+```
+
+## Services Overview
+
+### PostgreSQL (Database)
+
+- **Port:** 5432
+- **Database:** chatcraftai
+- **User:** postgres
+- **Password:** postgres
+- **Volume:** postgres_data
+
+### Redis (Cache)
+
+- **Port:** 6379
+- **Volume:** redis_data
+- **Configuration:** ./redis/redis.conf
+
+### Backend (Node.js API)
+
+- **Port:** 3001
+- **Environment:** Development
+- **Features:**
+  - Health checks
+  - Live code reloading
+
+### Frontend (Next.js)
+
+- **Port:** 3000
+- **Environment:** Development
+- **Features:**
+  - Hot module replacement
+  - Live code reloading
+
+### Nginx (Production Only)
+
+- **Ports:** 80, 443
+- **Profile:** production
+- **Usage:** `docker compose --profile production up`
+
+## Environment Variables
+
+### Backend (.env)
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@postgres:5432/chatcraftai
+REDIS_URL=redis://redis:6379
+OPENAI_API_KEY=your_openai_api_key
+JWT_SECRET=your_jwt_secret
+```
+
+### Frontend (.env.local)
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
+NEXT_PUBLIC_WS_URL=ws://localhost:3001
+```
+
+## Troubleshooting
+
+### Database Connection Issues
+
+```bash
+# Check if PostgreSQL is running
+docker compose ps postgres
+
+# Check PostgreSQL logs
+docker compose logs postgres
+
+# Test connection
+docker exec chatcraftai-postgres pg_isready -U postgres
+```
+
+### Backend Issues
+
+```bash
+# Check backend logs
+docker compose logs backend
+
+# Restart backend
+docker compose restart backend
+
+# Access backend shell
+docker exec -it chatcraftai-backend sh
+```
+
+### Frontend Issues
+
+```bash
+# Check frontend logs
+docker compose logs frontend
+
+# Restart frontend
+docker compose restart frontend
+
+# Clear Next.js cache
+docker exec chatcraftai-frontend rm -rf .next
+```
+
+### Volume Issues
+
+```bash
+# List volumes
+docker volume ls
+
+# Inspect volume
+docker volume inspect chatcraftai_postgres_data
+
+# Remove volume (WARNING: Deletes data)
+docker volume rm chatcraftai_postgres_data
+```
+
+## Production Deployment
+
+For production deployment, use the production profile:
+
+```bash
+# Build and start production services
+docker compose --profile production up --build
+
+# Or use the production compose file
+docker compose -f docker-compose.prod.yml up --build
+```
+
+## Development Workflow
+
+1. **Initial setup:** `docker compose up --build` then `docker exec chatcraftai-backend npx prisma db seed`
+2. **Start services:** `docker compose up`
+3. **Make code changes** - they'll be reflected automatically
+4. **Test changes** in the browser
+5. **Stop services:** `docker compose down`
+6. **Restart when needed:** `docker compose up`
+
+The setup is optimized for development with live code reloading and persistent data across restarts.
 
 ## 📁 File Structure
 

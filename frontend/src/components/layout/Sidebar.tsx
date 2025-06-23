@@ -45,6 +45,7 @@ interface SidebarProps {
   onCreateDirectChat: () => void;
   onCreateGroupChat: () => void;
   onDiscoverGroups: () => void;
+  onOpenAdminDashboard?: () => void;
   isMobile?: boolean;
   onClose?: () => void;
 }
@@ -56,6 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCreateDirectChat,
   onCreateGroupChat,
   onDiscoverGroups,
+  onOpenAdminDashboard,
   isMobile = false,
   onClose,
 }) => {
@@ -100,6 +102,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const handleLogout = () => {
     logout();
+    handleMenuClose();
+  };
+
+  const handleAdminDashboard = () => {
+    if (onOpenAdminDashboard) {
+      onOpenAdminDashboard();
+    }
     handleMenuClose();
   };
 
@@ -171,6 +180,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
               >
                 {user?.name}
+                {user?.isAdmin && (
+                  <Chip
+                    label="Admin"
+                    size="small"
+                    color="primary"
+                    sx={{ ml: 1, height: 20, fontSize: "0.75rem" }}
+                  />
+                )}
               </Typography>
               <Typography
                 variant="caption"
@@ -267,6 +284,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
           Discover Groups
         </Button>
+        {user?.isAdmin && onOpenAdminDashboard && (
+          <Button
+            fullWidth
+            variant="outlined"
+            size="small"
+            startIcon={<SettingsIcon />}
+            onClick={onOpenAdminDashboard}
+            sx={{
+              justifyContent: "flex-start",
+              borderColor: "warning.main",
+              color: "warning.main",
+              "&:hover": {
+                borderColor: "warning.dark",
+                bgcolor: "warning.light",
+                color: "warning.dark",
+              },
+            }}
+          >
+            Admin Dashboard
+          </Button>
+        )}
         <Button
           fullWidth
           variant="outlined"
@@ -546,10 +584,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           },
         }}
       >
-        <MenuItem onClick={handleMenuClose}>
-          <SettingsIcon sx={{ mr: 2, fontSize: 20 }} />
-          Settings
-        </MenuItem>
+        {user?.isAdmin && onOpenAdminDashboard && (
+          <MenuItem onClick={handleAdminDashboard}>
+            <SettingsIcon sx={{ mr: 2, fontSize: 20 }} />
+            Admin Dashboard
+          </MenuItem>
+        )}
         <MenuItem onClick={handleMenuClose}>
           <NotificationsIcon sx={{ mr: 2, fontSize: 20 }} />
           Notifications

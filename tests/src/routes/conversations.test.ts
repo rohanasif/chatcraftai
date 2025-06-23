@@ -1,6 +1,8 @@
 import request from "supertest";
 import express from "express";
+import cookieParser from "cookie-parser";
 import conversationsRouter from "@backend/routes/conversations";
+import authRouter from "@backend/routes/auth";
 import {
   createTestUser,
   createTestConversation,
@@ -11,7 +13,9 @@ import {
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 app.use("/api/conversations", conversationsRouter);
+app.use("/api/auth", authRouter);
 
 describe("Conversations Routes", () => {
   beforeEach(async () => {
@@ -440,7 +444,6 @@ describe("Conversations Routes", () => {
 
   describe("POST /api/conversations/:conversationId/read", () => {
     let user1: any;
-    let user2: any;
     let conversation: any;
     let authToken: string;
 
@@ -449,33 +452,226 @@ describe("Conversations Routes", () => {
         email: "user1@example.com",
         name: "User 1",
       });
-      user2 = await createTestUser({
-        email: "user2@example.com",
-        name: "User 2",
-      });
+      conversation = await createTestConversation({}, [user1]);
       authToken = generateToken(user1.id);
-
-      conversation = await createTestConversation({}, [user1, user2]);
     });
 
     it("should mark conversation as read for user", async () => {
       const response = await request(app)
         .post(`/api/conversations/${conversation.id}/read`)
         .set("Authorization", `Bearer ${authToken}`)
-        .send({ userId: user1.id })
         .expect(200);
 
       expect(response.body.success).toBe(true);
+      expect(response.body.markedAsRead).toBeGreaterThanOrEqual(0);
     });
 
     it("should handle errors gracefully", async () => {
       const response = await request(app)
         .post("/api/conversations/invalid-conversation-id/read")
         .set("Authorization", `Bearer ${authToken}`)
-        .send({ userId: user1.id })
         .expect(500);
 
       expect(response.body.error).toBe("Failed to mark as read");
+    });
+  });
+
+  describe("Admin Conversation Routes", () => {
+    let adminToken: string;
+    let userToken: string;
+    let adminUser: any;
+    let regularUser: any;
+    let testGroup: any;
+
+    beforeEach(async () => {
+      // Create admin user
+      const adminResponse = await request(app).post("/api/auth/register").send({
+        email: "admin@test.com",
+        password: "admin123",
+        name: "Admin User",
+        isAdmin: true,
+      });
+      adminUser = adminResponse.body.user;
+      adminToken = adminResponse.headers["set-cookie"]?.[0] || "";
+
+      // Create regular user
+      const userResponse = await request(app).post("/api/auth/register").send({
+        email: "user@test.com",
+        password: "user123",
+        name: "Regular User",
+        isAdmin: false,
+      });
+      regularUser = userResponse.body.user;
+      userToken = userResponse.headers["set-cookie"]?.[0] || "";
+
+      // Create a test group
+      const groupResponse = await request(app)
+        .post("/api/conversations/group")
+        .set("Cookie", adminToken)
+        .send({
+          title: "Test Group",
+          memberEmails: [regularUser.email],
+          isPublic: true,
+        });
+      testGroup = groupResponse.body;
+    });
+
+    describe("GET /conversations/admin/groups", () => {
+      it("should allow admin to get all groups", async () => {
+        const response = await request(app)
+          .get("/api/conversations/admin/groups")
+          .set("Cookie", adminToken);
+
+        expect(response.status).toBe(200);
+        expect(Array.isArray(response.body)).toBe(true);
+        expect(response.body.length).toBeGreaterThan(0);
+      });
+
+      it("should deny regular user access to admin groups endpoint", async () => {
+        const response = await request(app)
+          .get("/api/conversations/admin/groups")
+          .set("Cookie", userToken);
+
+        expect(response.status).toBe(403);
+        expect(response.body.error).toBe("Admin access required");
+      });
+
+      it("should deny unauthenticated access", async () => {
+        const response = await request(app).get(
+          "/api/conversations/admin/groups"
+        );
+
+        expect(response.status).toBe(401);
+        expect(response.body.error).toBe("Access token required");
+      });
+    });
+
+    describe("PUT /conversations/admin/groups/:groupId", () => {
+      it("should allow admin to update group title", async () => {
+        const response = await request(app)
+          .put(`/api/conversations/admin/groups/${testGroup.id}`)
+          .set("Cookie", adminToken)
+          .send({ title: "Updated Group Title" });
+
+        expect(response.status).toBe(200);
+        expect(response.body.title).toBe("Updated Group Title");
+      });
+
+      it("should allow admin to update group public status", async () => {
+        const response = await request(app)
+          .put(`/api/conversations/admin/groups/${testGroup.id}`)
+          .set("Cookie", adminToken)
+          .send({ isPublic: false });
+
+        expect(response.status).toBe(200);
+        expect(response.body.isPublic).toBe(false);
+      });
+
+      it("should deny regular user access to update group", async () => {
+        const response = await request(app)
+          .put(`/api/conversations/admin/groups/${testGroup.id}`)
+          .set("Cookie", userToken)
+          .send({ title: "Unauthorized Update" });
+
+        expect(response.status).toBe(403);
+        expect(response.body.error).toBe("Admin access required");
+      });
+
+      it("should return 404 for non-existent group", async () => {
+        const response = await request(app)
+          .put("/api/conversations/admin/groups/non-existent-id")
+          .set("Cookie", adminToken)
+          .send({ title: "Test" });
+
+        expect(response.status).toBe(404);
+        expect(response.body.error).toBe("Group not found");
+      });
+    });
+
+    describe("DELETE /conversations/admin/groups/:groupId", () => {
+      it("should allow admin to delete group", async () => {
+        // Create a group to delete
+        const groupToDelete = await request(app)
+          .post("/api/conversations/group")
+          .set("Cookie", adminToken)
+          .send({
+            title: "Group to Delete",
+            memberEmails: [regularUser.email],
+            isPublic: true,
+          });
+
+        const response = await request(app)
+          .delete(`/api/conversations/admin/groups/${groupToDelete.body.id}`)
+          .set("Cookie", adminToken);
+
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+      });
+
+      it("should deny regular user access to delete group", async () => {
+        const response = await request(app)
+          .delete(`/api/conversations/admin/groups/${testGroup.id}`)
+          .set("Cookie", userToken);
+
+        expect(response.status).toBe(403);
+        expect(response.body.error).toBe("Admin access required");
+      });
+
+      it("should return 404 for non-existent group", async () => {
+        const response = await request(app)
+          .delete("/api/conversations/admin/groups/non-existent-id")
+          .set("Cookie", adminToken);
+
+        expect(response.status).toBe(404);
+        expect(response.body.error).toBe("Group not found");
+      });
+    });
+
+    describe("POST /conversations/group (Admin Only)", () => {
+      it("should allow admin to create group", async () => {
+        const response = await request(app)
+          .post("/api/conversations/group")
+          .set("Cookie", adminToken)
+          .send({
+            title: "New Admin Group",
+            memberEmails: [regularUser.email],
+            isPublic: false,
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.body.title).toBe("New Admin Group");
+        expect(response.body.isGroup).toBe(true);
+        expect(response.body.creator.id).toBe(adminUser.id);
+      });
+
+      it("should deny regular user access to create group", async () => {
+        const response = await request(app)
+          .post("/api/conversations/group")
+          .set("Cookie", userToken)
+          .send({
+            title: "Unauthorized Group",
+            memberEmails: [adminUser.email],
+            isPublic: true,
+          });
+
+        expect(response.status).toBe(403);
+        expect(response.body.error).toBe("Admin access required");
+      });
+
+      it("should validate required fields", async () => {
+        const response = await request(app)
+          .post("/api/conversations/group")
+          .set("Cookie", adminToken)
+          .send({
+            title: "Invalid Group",
+            // Missing memberEmails
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toBe(
+          "title and memberEmails[] are required"
+        );
+      });
     });
   });
 });

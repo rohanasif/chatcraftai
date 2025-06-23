@@ -50,6 +50,7 @@ export class WsServer {
                   userId,
                   data.conversationId,
                   data.content,
+                  data.isAISuggestion,
                 );
                 break;
 
@@ -164,6 +165,7 @@ export class WsServer {
     senderId: string,
     conversationId: string,
     content: string,
+    isAISuggestion?: boolean,
   ) {
     try {
       // Save to database
@@ -172,6 +174,8 @@ export class WsServer {
           content,
           senderId,
           conversationId,
+          isAISuggestion:
+            typeof isAISuggestion === "boolean" ? isAISuggestion : false,
         },
         include: {
           sender: {

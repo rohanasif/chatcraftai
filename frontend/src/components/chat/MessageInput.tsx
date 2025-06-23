@@ -17,7 +17,7 @@ import {
 } from "@mui/icons-material";
 
 interface MessageInputProps {
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string, isAISuggestion?: boolean) => void;
   onTyping: (isTyping: boolean) => void;
   onRequestSuggestions: () => void;
   suggestions: string[];
@@ -40,7 +40,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim() && !disabled) {
-      onSendMessage(message.trim());
+      onSendMessage(message.trim(), false);
       setMessage("");
       onTyping(false);
     }
@@ -73,8 +73,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    setMessage(suggestion);
-    onTyping(true);
+    setMessage("");
+    onSendMessage(suggestion, true);
+    onTyping(false);
   };
 
   const handleRemoveSuggestion = (index: number) => {

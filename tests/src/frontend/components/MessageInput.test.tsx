@@ -35,7 +35,7 @@ describe("MessageInput", () => {
       target: { value: "Hello world" },
     });
     fireEvent.click(screen.getByTitle("Send message"));
-    expect(onSendMessage).toHaveBeenCalledWith("Hello world");
+    expect(onSendMessage).toHaveBeenCalledWith("Hello world", false);
   });
 
   it("calls onRequestSuggestions when 🤖 button is clicked", () => {

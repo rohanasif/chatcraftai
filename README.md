@@ -6,18 +6,34 @@ A real-time, AI-augmented messaging platform built with Node.js, TypeScript, Exp
 
 ChatCraftAI is a modern messaging platform that combines real-time communication with AI-powered features to enhance user experience. The platform supports both 1:1 conversations and group chats, with intelligent features like grammar correction, quick reply suggestions, and conversation analytics.
 
+## User Roles & Permissions
+
+### Admin Users
+
+- **Group Management**: Create, edit, and delete group conversations
+- **User Management**: View all users, update user roles, and delete users
+- **Access Control**: Full access to all platform features
+- **Admin Dashboard**: Dedicated interface for managing users and groups
+
+### Regular Users
+
+- **1:1 Conversations**: Start direct chats with other users
+- **Group Participation**: Join public groups and participate in conversations
+- **Limited Access**: Cannot create or manage groups
+
 ## User Flow
 
 ### Sign Up & Sign In
 
 - New users register with email, password, display name, and optional avatar
 - Registered users log in and land on their Conversations dashboard
+- Admin users have additional "Admin Dashboard" access
 
 ### Conversation Management
 
 - **1:1 Chat**: Click "New Chat," select another user by email or username to start a private conversation
-- **Group Chats**: Managed exclusively by an Admin user. The Admin creates and configures all group conversations (sets title, invites users)
-- **Group Discovery**: All non-admin users can view and join existing groups from the dashboard without requiring an invitation
+- **Group Chats**: Managed exclusively by Admin users. Admins create and configure all group conversations (sets title, invites users, controls public/private status)
+- **Group Discovery**: All users can view and join existing public groups from the dashboard without requiring an invitation
 - **Dashboard** lists all conversations with:
   - Title (or other user's name for 1:1 chats)
   - Last message snippet
@@ -37,10 +53,18 @@ ChatCraftAI is a modern messaging platform that combines real-time communication
 
 ### Analytics & Insights
 
-Within each conversation:
+Within each conversation (accessible to all conversation members):
 
-- **Summary**: 2–3 sentence overview of the chat
+- **Summary**: 2–3 sentence overview of the chat (available after 1 hour of inactivity)
 - **Stats**: Total messages, word count, number of AI suggestions used
+- **Sentiment Analysis**: Breakdown of positive, neutral, and negative messages
+- **Sentiment Timeline Chart**: Visual representation of sentiment changes over time with message count correlation
+
+### Admin Features
+
+- **User Management**: View all users, change user roles (admin/user), delete users
+- **Group Management**: Create, edit, and delete groups, control public/private status
+- **Admin Dashboard**: Centralized interface for all administrative tasks
 
 ## Technical Stack
 
@@ -54,6 +78,7 @@ Within each conversation:
 - **AI**: OpenAI Node.js SDK
 - **Real-time**: WebSocket (ws)
 - **Authentication**: JWT with HttpOnly cookies
+- **Authorization**: Role-based access control (RBAC)
 
 ### Frontend
 
@@ -63,6 +88,7 @@ Within each conversation:
 - **Styling**: Tailwind CSS
 - **State Management**: React Context API
 - **Real-time**: WebSocket client
+- **Role-based UI**: Conditional rendering based on user permissions
 
 ### DevOps
 
@@ -77,7 +103,7 @@ Within each conversation:
 chatcraftai/
 ├── backend/           # Node.js API server
 │   ├── routes/        # API endpoints
-│   ├── middleware/    # Express middleware
+│   ├── middleware/    # Express middleware (auth, admin)
 │   ├── services/      # Business logic
 │   ├── prisma/        # Database schema & migrations
 │   └── server.ts      # Main server file
@@ -85,6 +111,9 @@ chatcraftai/
 │   ├── src/
 │   │   ├── app/       # Next.js app router
 │   │   ├── components/ # React components
+│   │   │   ├── admin/  # Admin-specific components
+│   │   │   ├── chat/   # Chat components
+│   │   │   └── ui/     # UI components
 │   │   ├── contexts/   # React contexts
 │   │   ├── services/   # API & WebSocket services
 │   │   └── types/      # TypeScript types
@@ -183,6 +212,26 @@ NEXT_PUBLIC_WS_URL="ws://localhost:3001"
    - Database: localhost:5432
    - Redis: localhost:6379
 
+### Default Users
+
+After seeding the database, you'll have access to these default accounts:
+
+#### Admin User
+
+- **Email**: admin@chatcraft.com
+- **Password**: admin123
+- **Role**: Admin (full access to all features)
+
+#### Regular Users
+
+- **Email**: user1@chatcraft.com
+- **Password**: user123
+- **Role**: User (limited access)
+
+- **Email**: user2@chatcraft.com
+- **Password**: user123
+- **Role**: User (limited access)
+
 ### Manual Setup
 
 1. **Backend Setup**
@@ -204,105 +253,133 @@ NEXT_PUBLIC_WS_URL="ws://localhost:3001"
    npm run dev
    ```
 
-3. **Database Setup**
-
-   ```bash
-   # Start PostgreSQL and Redis
-   docker-compose -f docker/docker-compose.yml up postgres redis -d
-
-   # Run migrations
-   cd backend
-   npx prisma migrate dev
-   npm run seed
-   ```
-
-## Testing
-
-### Backend Tests
-
-```bash
-cd backend
-npm test
-```
-
-### Frontend Tests
-
-```bash
-cd frontend
-npm test
-```
-
-### All Tests
-
-```bash
-npm run test:all
-```
-
-## API Documentation
+## API Endpoints
 
 ### Authentication
 
 - `POST /api/auth/register` - Register new user
 - `POST /api/auth/login` - Login user
-- `GET /api/auth/me` - Get current user
 - `POST /api/auth/logout` - Logout user
+- `GET /api/auth/me` - Get current user
+
+### Admin Only
+
+- `GET /api/auth/admin/users` - Get all users
+- `PUT /api/auth/admin/users/:userId/role` - Update user role
+- `DELETE /api/auth/admin/users/:userId` - Delete user
+- `GET /api/conversations/admin/groups` - Get all groups
+- `PUT /api/conversations/admin/groups/:groupId` - Update group
+- `DELETE /api/conversations/admin/groups/:groupId` - Delete group
 
 ### Conversations
 
-- `GET /api/conversations` - List user conversations
-- `POST /api/conversations` - Create new conversation
-- `GET /api/conversations/:id` - Get conversation details
-- `POST /api/conversations/:id/join` - Join group conversation
+- `GET /api/conversations/:userId` - Get user conversations
+- `POST /api/conversations/direct` - Create direct chat
+- `POST /api/conversations/group` - Create group (admin only)
+- `GET /api/conversations/discover/:userId` - Discover public groups
+- `POST /api/conversations/:groupId/join` - Join group
 
 ### Messages
 
-- `GET /api/conversations/:id/messages` - Get conversation messages
-- `POST /api/conversations/:id/messages` - Send message
-- `GET /api/conversations/:id/analytics` - Get conversation analytics
+- `GET /api/messages/:conversationId` - Get messages
+- `POST /api/messages/:conversationId` - Send message
+- `GET /api/messages/:conversationId/analytics` - Get analytics
+
+## Features
+
+### Core Features
+
+- ✅ Real-time messaging with WebSocket
+- ✅ User authentication with JWT
+- ✅ Role-based access control (Admin/User)
+- ✅ 1:1 and group conversations
+- ✅ Group discovery and joining
+- ✅ Message history and persistence
+- ✅ Typing indicators
+- ✅ Online presence
+
+### Admin Features
+
+- ✅ Admin dashboard for user management
+- ✅ Group creation and management
+- ✅ User role management
+- ✅ Public/private group control
+- ✅ User deletion capabilities
 
 ### AI Features
 
-- `POST /api/ai/grammar` - Grammar correction
-- `POST /api/ai/suggestions` - Quick reply suggestions
-- `POST /api/ai/summarize` - Conversation summarization
+- ✅ Grammar correction
+- ✅ Quick reply suggestions
+- ✅ Conversation analytics with AI-powered summary
+- ✅ Sentiment analysis with timeline visualization
+- ✅ Redis caching for improved performance
 
-## WebSocket Events
+### UI/UX Features
 
-- `join` - Join conversation room
-- `message:send` - Send message
-- `typing:start/stop` - Typing indicators
-- `suggestion:reply` - AI reply suggestions
-- `suggestion:grammar` - Grammar corrections
+- ✅ Responsive design
+- ✅ Dark/light theme support
+- ✅ Real-time updates
+- ✅ Loading states
+- ✅ Error handling
+- ✅ Toast notifications
 
 ## Development
 
+### Running Tests
+
+```bash
+# Backend tests
+cd backend
+npm test
+
+# Frontend tests
+cd frontend
+npm test
+
+# Integration tests
+cd tests
+npm test
+```
+
+### Database Migrations
+
+```bash
+cd backend
+npx prisma migrate dev    # Create and apply migration
+npx prisma generate       # Generate Prisma client
+npx prisma studio         # Open database GUI
+```
+
 ### Code Quality
 
-- ESLint for linting
-- Prettier for code formatting
-- Husky for pre-commit hooks
+```bash
+# Linting
+npm run lint
 
-### Database
+# Type checking
+npm run type-check
 
-- Prisma for database management
-- Migrations for schema changes
-- Seed script for initial data
+# Formatting
+npm run format
+```
 
-### Deployment
+## Deployment
 
-- Docker containers for all services
-- Nginx reverse proxy
-- Environment-specific configurations
+### Production Docker
 
-## Videos
+```bash
+docker-compose -f docker/docker-compose.prod.yml up -d
+```
 
-### Code Overview (8-10 min)
+### Environment Variables for Production
 
-_[Link to be added]_ - Walk through repository structure, highlight key flows (authentication, WebSocket implementation, GPT integration)
+Make sure to set appropriate production values for:
 
-### Functionality Demo (5-7 min)
-
-_[Link to be added]_ - Show end-to-end user flow, AI features, and analytics
+- `JWT_SECRET` (use a strong, random string)
+- `DATABASE_URL` (production database)
+- `REDIS_URL` (production Redis)
+- `OPENAI_KEY` (valid OpenAI API key)
+- `NODE_ENV=production`
 
 ## Contributing
 
