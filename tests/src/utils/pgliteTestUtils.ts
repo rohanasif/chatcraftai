@@ -22,10 +22,8 @@ export async function initializePGlite(config: PGliteTestConfig = {}): Promise<{
     return { pglite, prisma, dbPath };
   }
 
-  // Create a unique database path for this test run
-  const timestamp = Date.now();
-  const testDbPath =
-    config.dbPath || path.join(process.cwd(), `test-db-${timestamp}.db`);
+  // Use a single database path for all tests
+  const testDbPath = config.dbPath || path.join(process.cwd(), "test-db.db");
 
   // Ensure the directory exists
   const dbDir = path.dirname(testDbPath);
@@ -61,7 +59,7 @@ async function runMigrations(): Promise<void> {
     throw new Error("Prisma client not initialized");
   }
 
-  // Create tables based on the schema
+  // Create tables based on the schema - use the test schema
   const schemaPath = path.join(process.cwd(), "prisma", "schema.prisma");
 
   // Read the schema file
@@ -105,6 +103,7 @@ function generateSQLFromSchema(schemaContent: string): string[] {
       "content" TEXT NOT NULL,
       "senderId" TEXT NOT NULL,
       "conversationId" TEXT NOT NULL,
+      "isAISuggestion" BOOLEAN NOT NULL DEFAULT false,
       "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY ("senderId") REFERENCES "User"("id") ON DELETE CASCADE,
@@ -176,30 +175,6 @@ export async function cleanupPGlite(): Promise<void> {
       console.warn("Could not delete test database directory:", error);
     }
     dbPath = null;
-  }
-
-  // Also clean up any other test database files that might have been created
-  try {
-    const currentDir = process.cwd();
-    const items = fs.readdirSync(currentDir, { withFileTypes: true });
-
-    for (const item of items) {
-      if (item.name.startsWith("test-db-") || item.name.startsWith("pglite-")) {
-        const itemPath = path.join(currentDir, item.name);
-        try {
-          if (item.isDirectory()) {
-            fs.rmSync(itemPath, { recursive: true, force: true });
-          } else {
-            fs.unlinkSync(itemPath);
-          }
-          console.log(`🧹 Cleaned up test artifact: ${item.name}`);
-        } catch (error) {
-          console.warn(`Could not clean up ${item.name}:`, error);
-        }
-      }
-    }
-  } catch (error) {
-    console.warn("Error during additional cleanup:", error);
   }
 }
 

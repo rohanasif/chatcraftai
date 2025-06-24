@@ -447,12 +447,14 @@ For support and questions, please open an issue in the GitHub repository.
 Below are video links that demonstrate the codebase and showcase the application's features:
 
 - [ChatCraftAI Code Overview - Part 1](https://www.loom.com/share/8c90fa32832d4df1ae09400981ab1f80?sid=e0a84bda-6664-4bd9-bb7a-51b97ce34271)
-   *A guided walkthrough of the project structure, backend, and frontend code.*
+  _A guided walkthrough of the project structure, backend, and frontend code._
 
 - [ChatCraftAI Code Overview - Part 2](https://www.loom.com/share/4c0249fd2d9f4a88998ab7315334017b?sid=9eb2fde6-b4c7-46f4-866b-7afaf72ea310)
-   *A guided walkthrough of the project structure, backend, and frontend code.*
+  _A guided walkthrough of the project structure, backend, and frontend code._
 
-- [ChatCraftAI Feature Demo](https://www.loom.com/share/82b4fb3ed281404d8f7f7df000e33bb8?sid=1f15a961-0f06-4b65-afba-2900734f764b)
-   *A demonstration of real-time messaging, AI enhancements, admin dashboard, and analytics.*
+- [ChatCraftAI Feature Demo - Part 1](https://www.loom.com/share/82b4fb3ed281404d8f7f7df000e33bb8?sid=1f15a961-0f06-4b65-afba-2900734f764b)
+  _A demonstration of real-time messaging, AI enhancements, admin dashboard, and analytics._
 
-> If you have suggestions for additional video content, please open an issue or submit a pull request.
+- [ChatCraftAI Feature Demo - Part 2](https://www.loom.com/share/432b08a8143547b4b8500b27c1c8de75?sid=f2a13e3b-247a-45e1-b7eb-26fee96a85d5)
+  _A demonstration of real-time messaging, AI enhancements, admin dashboard, and analytics._
+  > If you have suggestions for additional video content, please open an issue or submit a pull request.

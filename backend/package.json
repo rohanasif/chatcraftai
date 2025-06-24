@@ -16,8 +16,7 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "test": "jest"
+    "format:check": "prettier --check ."
   },
   "prisma": {
     "seed": "ts-node scripts/seed.ts"

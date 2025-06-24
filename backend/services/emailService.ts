@@ -9,21 +9,10 @@ export class EmailService {
   ): Promise<void> {
     try {
       // Generate invitation links
-      const invitationLinks = inviteeEmails.map((email) => {
+      const _invitationLinks = inviteeEmails.map((email) => {
         const token = this.generateInvitationToken(groupId, email);
         return `http://localhost:3000/invite?token=${token}&group=${groupId}`;
       });
-
-      // Log invitation links (simulate email sending)
-      console.log("=== GROUP INVITATION EMAILS ===");
-      console.log(`Group: ${groupTitle}`);
-      console.log(`Invited by: ${inviterEmail}`);
-      console.log("Invitation links:");
-
-      inviteeEmails.forEach((email, index) => {
-        console.log(`${email}: ${invitationLinks[index]}`);
-      });
-      console.log("================================");
 
       // In a real implementation, you would:
       // 1. Use a service like SendGrid, AWS SES, or Nodemailer

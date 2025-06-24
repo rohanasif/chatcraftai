@@ -40,6 +40,7 @@ export class WebSocketService {
 
       const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
       const fullUrl = `${wsUrl}?token=${token}`;
+
       this.ws = new WebSocket(fullUrl);
 
       this.ws.onopen = () => {

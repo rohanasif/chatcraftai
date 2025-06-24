@@ -10,8 +10,7 @@
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "test": "jest --passWithNoTests"
+    "format:check": "prettier --check ."
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx}": [

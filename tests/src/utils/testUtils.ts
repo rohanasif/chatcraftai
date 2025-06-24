@@ -32,7 +32,8 @@ export interface TestMessage {
 
 // Create a test user
 export async function createTestUser(
-  userData: Partial<TestUser> = {}
+  userData: Partial<TestUser> = {},
+  prismaClient?: PrismaClient
 ): Promise<TestUser> {
   const defaultUser: TestUser = {
     id: "",
@@ -45,7 +46,7 @@ export async function createTestUser(
   };
 
   const hashedPassword = await bcrypt.hash(defaultUser.password, 10);
-  const prisma = await getPrismaClient();
+  const prisma = prismaClient || (await getPrismaClient());
 
   const user = await prisma.user.create({
     data: {
@@ -67,7 +68,8 @@ export async function createTestUser(
 // Create a test conversation
 export async function createTestConversation(
   conversationData: Partial<TestConversation> = {},
-  memberUsers: TestUser[] = []
+  memberUsers: TestUser[] = [],
+  prismaClient?: PrismaClient
 ): Promise<TestConversation> {
   const defaultConversation: TestConversation = {
     id: "",
@@ -80,12 +82,12 @@ export async function createTestConversation(
 
   // Create member users if not provided
   if (memberUsers.length === 0) {
-    const user1 = await createTestUser();
-    const user2 = await createTestUser();
+    const user1 = await createTestUser({}, prismaClient);
+    const user2 = await createTestUser({}, prismaClient);
     memberUsers = [user1, user2];
   }
 
-  const prisma = await getPrismaClient();
+  const prisma = prismaClient || (await getPrismaClient());
   const conversation = await prisma.conversation.create({
     data: {
       title: defaultConversation.title,
@@ -109,14 +111,15 @@ export async function createTestConversation(
 export async function createTestMessage(
   messageData: Partial<TestMessage> = {},
   sender?: TestUser,
-  conversation?: TestConversation
+  conversation?: TestConversation,
+  prismaClient?: PrismaClient
 ): Promise<TestMessage> {
   if (!sender) {
-    sender = await createTestUser();
+    sender = await createTestUser({}, prismaClient);
   }
 
   if (!conversation) {
-    conversation = await createTestConversation({}, [sender]);
+    conversation = await createTestConversation({}, [sender], prismaClient);
   }
 
   const defaultMessage: TestMessage = {
@@ -127,7 +130,7 @@ export async function createTestMessage(
     ...messageData,
   };
 
-  const prisma = await getPrismaClient();
+  const prisma = prismaClient || (await getPrismaClient());
   const message = await prisma.message.create({
     data: {
       content: defaultMessage.content,
@@ -159,8 +162,18 @@ export function createAuthenticatedRequest(
 }
 
 // Clean up test data
-export async function cleanupTestData(): Promise<void> {
-  await resetDatabase();
+export async function cleanupTestData(
+  prismaClient?: PrismaClient
+): Promise<void> {
+  if (prismaClient) {
+    // Clean up specific tables in the provided database
+    await prismaClient.message.deleteMany();
+    await prismaClient.conversation.deleteMany();
+    await prismaClient.user.deleteMany();
+  } else {
+    // Use PGlite reset
+    await resetDatabase();
+  }
 }
 
 // Mock OpenAI responses

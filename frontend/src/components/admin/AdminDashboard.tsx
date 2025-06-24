@@ -24,7 +24,6 @@ import {
   FormControl,
   Card,
   CardContent,
-  Grid,
   IconButton,
   Chip,
   CircularProgress,
@@ -292,9 +291,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Group Management
                 </Typography>
-                <Grid container spacing={2}>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
                   {groups.map((group) => (
-                    <Grid item xs={12} md={6} lg={4} key={group.id}>
+                    <Box
+                      key={group.id}
+                      sx={{ width: { xs: "100%", sm: "48%", md: "31%" } }}
+                    >
                       <Card variant="outlined" sx={{ height: "100%" }}>
                         <CardContent>
                           <Box
@@ -392,9 +394,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </Box>
                         </CardContent>
                       </Card>
-                    </Grid>
+                    </Box>
                   ))}
-                </Grid>
+                </Box>
               </Box>
             )}
           </>

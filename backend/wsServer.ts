@@ -76,7 +76,7 @@ export class WsServer {
         });
 
         ws.on("error", (error) => {
-          console.error("WebSocket error:", error);
+          console.error("WebSocket error for user", userId, ":", error);
           this.handleDisconnect(userId);
         });
       } catch (error) {
@@ -128,6 +128,7 @@ export class WsServer {
           user.socket.send(
             JSON.stringify({
               type: "presence",
+              conversationId,
               userId,
               isOnline: true,
             }),
@@ -153,6 +154,7 @@ export class WsServer {
       ws.send(
         JSON.stringify({
           type: "members",
+          conversationId,
           members: conversation?.members || [],
         }),
       );
@@ -203,6 +205,7 @@ export class WsServer {
             user.socket.send(
               JSON.stringify({
                 type: "message",
+                conversationId,
                 message,
               }),
             );
@@ -231,6 +234,7 @@ export class WsServer {
             user.socket.send(
               JSON.stringify({
                 type: "typing",
+                conversationId,
                 userId,
                 isTyping,
               }),
@@ -260,6 +264,7 @@ export class WsServer {
             user.socket.send(
               JSON.stringify({
                 type: "suggestion",
+                conversationId,
                 suggestion,
               }),
             );
@@ -284,6 +289,7 @@ export class WsServer {
               user.socket.send(
                 JSON.stringify({
                   type: "presence",
+                  conversationId: room.conversationId,
                   userId,
                   isOnline: false,
                 }),

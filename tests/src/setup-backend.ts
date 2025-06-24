@@ -12,7 +12,8 @@ if (typeof global.fetch === "undefined") {
 
 // Set test environment variables
 process.env.NODE_ENV = "test";
-process.env.JWT_SECRET = "test-jwt-secret-key-for-testing-only";
+process.env.JWT_SECRET =
+  "klj3lrkj23jrlkj2rlj2l3krjlf2jfj2l3kj23fj32lkfjl2kj3lfkj2lkl";
 process.env.REDIS_URL =
   process.env.TEST_REDIS_URL || "redis://localhost:6379/1";
 process.env.OPENAI_KEY = "test-openai-key";

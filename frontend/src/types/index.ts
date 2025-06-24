@@ -72,6 +72,7 @@ export interface WebSocketMessage {
   members?: User[];
   message?: Message;
   suggestion?: string;
+  isAISuggestion?: boolean;
 }
 
 export interface AuthResponse {

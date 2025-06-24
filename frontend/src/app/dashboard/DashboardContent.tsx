@@ -68,6 +68,27 @@ export default function DashboardContent() {
   const handlersRegisteredRef = useRef(false);
   const hasAttemptedConnectionRef = useRef(false);
 
+  const selectedConversationRef = useRef<Conversation | null>(null);
+  const isTypingRef = useRef<boolean>(false);
+  const suggestionsRef = useRef<string[]>([]);
+  const showAnalyticsRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
+
+  useEffect(() => {
+    isTypingRef.current = isTyping;
+  }, [isTyping]);
+
+  useEffect(() => {
+    suggestionsRef.current = suggestions;
+  }, [suggestions]);
+
+  useEffect(() => {
+    showAnalyticsRef.current = showAnalytics;
+  }, [showAnalytics]);
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
@@ -115,31 +136,64 @@ export default function DashboardContent() {
             case "message":
               if (
                 message.message &&
-                selectedConversation?.id === message.conversationId
+                selectedConversationRef.current?.id === message.conversationId
               ) {
                 setMessages((prev) => {
-                  // Check if message already exists to prevent duplicates
                   const messageExists = prev.some(
-                    (msg) => msg.id === message.message.id,
+                    (msg) => msg.id === message.message?.id,
                   );
                   if (messageExists) {
                     return prev;
                   }
                   return [...prev, message.message!];
                 });
+
+                // Update analytics in real time when new message is received
+                if (showAnalyticsRef.current) {
+                  loadAnalytics(message.conversationId);
+                }
               }
-              // Update conversation list
               loadConversations();
               break;
             case "typing":
-              if (message.conversationId === selectedConversation?.id) {
+              if (
+                message.conversationId === selectedConversationRef.current?.id
+              ) {
                 setIsTyping(message.isTyping || false);
+                isTypingRef.current = message.isTyping || false;
               }
               break;
             case "suggestion":
-              if (message.suggestion) {
+              if (
+                message.suggestion &&
+                message.conversationId === selectedConversationRef.current?.id
+              ) {
                 setSuggestions((prev) => [...prev, message.suggestion!]);
+                suggestionsRef.current = [
+                  ...suggestionsRef.current,
+                  message.suggestion!,
+                ];
               }
+              break;
+            case "presence":
+              if (
+                message.conversationId === selectedConversationRef.current?.id
+              ) {
+                // Optionally update user status in the conversation UI
+                // e.g., setPresenceState(message.userId, message.isOnline)
+              }
+              break;
+            case "members":
+              if (
+                message.conversationId ===
+                  selectedConversationRef.current?.id &&
+                message.members
+              ) {
+                // Optionally update members list in the UI
+                // setMembers(message.members)
+              }
+              break;
+            default:
               break;
           }
         };
@@ -325,9 +379,8 @@ export default function DashboardContent() {
     if (!selectedConversation) return;
 
     try {
-      const data = await apiService.getAnalytics(selectedConversation.id);
-      setAnalytics(data);
       setShowAnalytics(true);
+      await loadAnalytics(selectedConversation.id);
     } catch (error: unknown) {
       toast.error("Failed to load analytics");
       console.error("Error loading analytics:", error);
@@ -365,6 +418,18 @@ export default function DashboardContent() {
 
   const handleCloseAdminDashboard = () => {
     setShowAdminDashboard(false);
+  };
+
+  const loadAnalytics = async (conversationId: string) => {
+    if (!conversationId) return;
+
+    try {
+      const data = await apiService.getAnalytics(conversationId);
+      setAnalytics(data);
+    } catch (error: unknown) {
+      console.error("Error loading analytics:", error);
+      // Don't show toast for analytics errors as they're not critical
+    }
   };
 
   if (authLoading) {

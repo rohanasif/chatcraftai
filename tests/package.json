@@ -4,11 +4,11 @@
   "description": "Test suite for ChatCraftAI backend",
   "main": "index.js",
   "scripts": {
-    "test": "node --experimental-vm-modules node_modules/.bin/jest --detectOpenHandles && npm run cleanup:db",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --detectOpenHandles ; node scripts/cleanup-db.js",
     "test:frontend": "node --experimental-vm-modules node_modules/.bin/jest --testPathPatterns=src/frontend",
-    "test:backend": "node --experimental-vm-modules node_modules/.bin/jest --testPathPatterns=src/(routes|middleware|services|integration) && npm run cleanup:db",
+    "test:backend": "node --experimental-vm-modules node_modules/.bin/jest --testPathPatterns=src/(routes|middleware|services|integration)",
     "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
-    "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage && npm run cleanup:db",
+    "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
     "cleanup:db": "node scripts/cleanup-db.js",
     "cleanup:all": "npm run cleanup:db && rm -rf node_modules/.cache"
   },
@@ -29,6 +29,7 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.10.2",
     "@types/supertest": "^6.0.2",
+    "@types/ws": "^8.18.1",
     "chart.js": "^4.5.0",
     "dotenv": "^16.4.7",
     "express": "^5.0.0",

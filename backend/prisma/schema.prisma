@@ -1,10 +1,10 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 model User {
@@ -14,36 +14,36 @@ model User {
   name                 String
   avatar               String?
   isAdmin              Boolean        @default(false)
-  createdConversations Conversation[] @relation("ConversationCreator")
-  memberConversations  Conversation[] @relation("ConversationMembers")
-  sentMessages         Message[]      @relation("MessageSender")
-  readMessages         Message[]      @relation("MessageReadBy")
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
+  createdConversations Conversation[] @relation("ConversationCreator")
+  sentMessages         Message[]      @relation("MessageSender")
+  memberConversations  Conversation[] @relation("ConversationMembers")
+  readMessages         Message[]      @relation("MessageReadBy")
 }
 
 model Conversation {
   id        String    @id @default(uuid())
   title     String?
   isGroup   Boolean   @default(false)
-  isPublic  Boolean   @default(false) // For group discovery
-  creator   User?     @relation("ConversationCreator", fields: [creatorId], references: [id], onDelete: SetNull)
   creatorId String?
-  members   User[]    @relation("ConversationMembers")
-  messages  Message[] @relation("ConversationMessages")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  isPublic  Boolean   @default(false)
+  creator   User?     @relation("ConversationCreator", fields: [creatorId], references: [id])
+  messages  Message[] @relation("ConversationMessages")
+  members   User[]    @relation("ConversationMembers")
 }
 
 model Message {
   id             String       @id @default(uuid())
   content        String
-  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
   senderId       String
-  conversation   Conversation @relation("ConversationMessages", fields: [conversationId], references: [id], onDelete: Cascade)
   conversationId String
-  readBy         User[]       @relation("MessageReadBy")
-  isAISuggestion Boolean      @default(false) // Track if message was generated using AI suggestions
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  isAISuggestion Boolean      @default(false)
+  conversation   Conversation @relation("ConversationMessages", fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  readBy         User[]       @relation("MessageReadBy")
 }

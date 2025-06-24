@@ -59,6 +59,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
       }
 
       await apiService.createGroupChat({
+        userId: user.id,
         title,
         memberEmails: emails,
         isPublic,

@@ -211,7 +211,8 @@ const SentimentTimelineChart: React.FC<{
         max: 1.5,
         ticks: {
           stepSize: 1,
-          callback: function (value: number) {
+          callback: function (tickValue: string | number) {
+            const value = Number(tickValue);
             if (value === 1) return "Positive";
             if (value === 0) return "Neutral";
             if (value === -1) return "Negative";
