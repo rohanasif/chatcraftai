@@ -82,20 +82,22 @@ Within each conversation (accessible to all conversation members):
 
 ### Frontend
 
-- **Framework**: Next.js (v13+)
+- **Framework**: Next.js (v15+)
 - **Language**: TypeScript
-- **UI**: React (v18+)
-- **Styling**: Tailwind CSS
+- **UI**: React (v19+)
+- **Styling**: Tailwind CSS v4 + Material-UI (MUI)
 - **State Management**: React Context API
-- **Real-time**: WebSocket client
+- **Real-time**: WebSocket client (ws)
+- **Charts**: Chart.js with react-chartjs-2
 - **Role-based UI**: Conditional rendering based on user permissions
 
 ### DevOps
 
 - **Containerization**: Docker & Docker Compose
-- **Testing**: Jest, React Testing Library
-- **Linting**: ESLint
+- **Testing**: Jest, React Testing Library, PGlite for database testing
+- **Linting**: ESLint v9
 - **Database Migrations**: Prisma Migrate
+- **Code Quality**: Prettier, lint-staged, husky
 
 ## Project Structure
 
@@ -106,6 +108,7 @@ chatcraftai/
 │   ├── middleware/    # Express middleware (auth, admin)
 │   ├── services/      # Business logic
 │   ├── prisma/        # Database schema & migrations
+│   ├── scripts/       # Database seeding
 │   └── server.ts      # Main server file
 ├── frontend/          # Next.js React app
 │   ├── src/
@@ -120,15 +123,40 @@ chatcraftai/
 │   └── package.json
 ├── docker/            # Docker configuration
 │   ├── docker-compose.yml
+│   ├── docker-compose.prod.yml
 │   ├── backend/Dockerfile
 │   ├── frontend/Dockerfile
 │   └── nginx/nginx.conf
 ├── tests/             # Test files
-│   ├── backend/       # Backend integration tests
-│   ├── frontend/      # Frontend E2E tests
-│   └── integration/   # End-to-end tests
+│   ├── src/
+│   │   ├── routes/    # Backend API tests
+│   │   ├── middleware/ # Middleware tests
+│   │   ├── services/  # Service tests
+│   │   ├── frontend/  # Frontend component tests
+│   │   └── integration/ # End-to-end tests
+│   └── package.json
 └── README.md
 ```
+
+## Database Schema
+
+### Production Schema
+
+The main database schema (`backend/prisma/schema.prisma`) includes:
+
+- **Named Relations**: Explicit relation names for better query control
+- **Cascade Rules**: Proper `onDelete` cascade rules for data integrity
+- **AI Features**: `isAISuggestion` field to track AI-generated messages
+- **Full PostgreSQL Features**: Leverages all PostgreSQL capabilities
+
+### Test Schema
+
+The test schema (`tests/prisma/schema.prisma`) is a simplified version optimized for testing:
+
+- **Default Relations**: Uses Prisma's default relation naming
+- **No Cascade Rules**: Simplified for PGlite compatibility
+- **Core Features Only**: Focuses on essential functionality for testing
+- **PGlite Optimized**: Designed for lightweight, file-based PostgreSQL testing
 
 ## Setup Instructions
 
@@ -153,7 +181,7 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/chatcraftai"
 REDIS_URL="redis://localhost:6379"
 
 # OpenAI
-OPENAI_KEY="your_openai_api_key"
+OPENAI_API_KEY="your_openai_api_key"
 
 # JWT
 JWT_SECRET="your_jwt_secret_key"
@@ -161,6 +189,7 @@ JWT_SECRET="your_jwt_secret_key"
 # Server
 PORT=3001
 NODE_ENV=development
+FRONTEND_URL="http://localhost:3000"
 ```
 
 #### Frontend (.env.local)
@@ -247,7 +276,7 @@ After seeding the database, you'll have access to these default accounts:
    npm install
    npx prisma generate
    npx prisma migrate dev
-   npm run seed
+   npm run prisma:seed
    npm run dev
    ```
 
@@ -291,6 +320,12 @@ After seeding the database, you'll have access to these default accounts:
 - `POST /api/messages/:conversationId` - Send message
 - `GET /api/messages/:conversationId/analytics` - Get analytics
 
+### Invitations
+
+- `POST /api/invitations/:groupId` - Send group invitation
+- `GET /api/invitations/:token` - Validate invitation token
+- `POST /api/invitations/:token/accept` - Accept invitation
+
 ## Features
 
 ### Core Features
@@ -303,6 +338,7 @@ After seeding the database, you'll have access to these default accounts:
 - ✅ Message history and persistence
 - ✅ Typing indicators
 - ✅ Online presence
+- ✅ Group invitations via email
 
 ### Admin Features
 
@@ -322,12 +358,13 @@ After seeding the database, you'll have access to these default accounts:
 
 ### UI/UX Features
 
-- ✅ Responsive design
+- ✅ Responsive design with Material-UI
 - ✅ Dark/light theme support
 - ✅ Real-time updates
 - ✅ Loading states
 - ✅ Error handling
 - ✅ Toast notifications
+- ✅ Interactive charts and analytics
 
 ## Development
 
@@ -384,8 +421,9 @@ Make sure to set appropriate production values for:
 - `JWT_SECRET` (use a strong, random string)
 - `DATABASE_URL` (production database)
 - `REDIS_URL` (production Redis)
-- `OPENAI_KEY` (valid OpenAI API key)
+- `OPENAI_API_KEY` (valid OpenAI API key)
 - `NODE_ENV=production`
+- `FRONTEND_URL` (production frontend URL)
 
 ## Contributing
 

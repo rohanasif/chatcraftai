@@ -147,12 +147,14 @@ docker exec chatcraftai-backend npm run prisma:seed
 - **User:** postgres
 - **Password:** postgres
 - **Volume:** postgres_data
+- **Health Check:** pg_isready
 
 ### Redis (Cache)
 
 - **Port:** 6379
 - **Volume:** redis_data
 - **Configuration:** ./redis/redis.conf
+- **Health Check:** redis-cli ping
 
 ### Backend (Node.js API)
 
@@ -160,31 +162,39 @@ docker exec chatcraftai-backend npm run prisma:seed
 - **Environment:** Development
 - **Features:**
   - Health checks
-  - Live code reloading
+  - Live code reloading with nodemon
+  - WebSocket server for real-time communication
+  - Prisma ORM with PostgreSQL
 
 ### Frontend (Next.js)
 
 - **Port:** 3000
 - **Environment:** Development
 - **Features:**
-  - Hot module replacement
+  - Hot module replacement with Turbopack
   - Live code reloading
+  - Material-UI components
+  - WebSocket client for real-time updates
 
 ### Nginx (Production Only)
 
 - **Ports:** 80, 443
 - **Profile:** production
 - **Usage:** `docker compose --profile production up`
+- **SSL:** Configured for HTTPS in production
 
 ## Environment Variables
 
 ### Backend (.env)
 
 ```env
+NODE_ENV=development
 DATABASE_URL=postgresql://postgres:postgres@postgres:5432/chatcraftai
 REDIS_URL=redis://redis:6379
-OPENAI_API_KEY=your_openai_api_key
 JWT_SECRET=your_jwt_secret
+OPENAI_API_KEY=your_openai_api_key
+FRONTEND_URL=http://localhost:3000
+PORT=3001
 ```
 
 ### Frontend (.env.local)
@@ -263,6 +273,25 @@ docker compose -f docker-compose.prod.yml exec backend npx prisma migrate deploy
 docker compose -f docker-compose.prod.yml exec backend npm run prisma:seed
 ```
 
+### Production Environment Variables
+
+For production, ensure these environment variables are properly set:
+
+```env
+# Backend (.env)
+NODE_ENV=production
+DATABASE_URL=postgresql://user:password@host:5432/chatcraftai
+REDIS_URL=redis://host:6379
+JWT_SECRET=your_strong_jwt_secret
+OPENAI_API_KEY=your_openai_api_key
+FRONTEND_URL=https://yourdomain.com
+PORT=3001
+
+# Frontend (.env.local)
+NEXT_PUBLIC_API_URL=https://yourdomain.com/api
+NEXT_PUBLIC_WS_URL=wss://yourdomain.com
+```
+
 ## Development Workflow
 
 1. **Initial setup:** `docker compose up --build` then `docker exec chatcraftai-backend npm run prisma:seed`
@@ -289,6 +318,8 @@ docker/
 │   └── init.sql            # Database initialization script
 ├── redis/
 │   └── redis.conf          # Redis configuration
+├── scripts/
+│   └── docker-utils.sh     # Docker utility scripts
 ├── docker-compose.yml      # Development environment
 ├── docker-compose.prod.yml # Production environment
 └── README.md              # This file
@@ -306,6 +337,8 @@ DATABASE_URL=postgresql://postgres:postgres@postgres:5432/chatcraftai
 REDIS_URL=redis://redis:6379
 JWT_SECRET=your_jwt_secret
 OPENAI_API_KEY=your_openai_api_key
+FRONTEND_URL=http://localhost:3000
+PORT=3001
 ```
 
 #### Frontend (.env.local)
@@ -317,7 +350,7 @@ NEXT_PUBLIC_WS_URL=ws://localhost:3001
 
 ### Database Configuration
 
-The PostgreSQL database is automatically initialized with the schema from `postgres/init.sql`. For production, consider:
+The PostgreSQL database is automatically initialized with the schema from Prisma migrations. For production, consider:
 
 - Using external database services (AWS RDS, Google Cloud SQL)
 - Setting up database backups

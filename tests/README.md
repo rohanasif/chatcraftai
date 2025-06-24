@@ -1,6 +1,6 @@
-# ChatCraftAI Backend Tests
+# ChatCraftAI Tests
 
-This directory contains comprehensive tests for the ChatCraftAI backend application. The tests are organized to cover all major components including authentication, conversations, messages, invitations, middleware, and services.
+This directory contains comprehensive tests for the ChatCraftAI application, covering both backend and frontend components. The tests are organized to cover all major components including authentication, conversations, messages, invitations, middleware, services, and frontend components.
 
 ## Test Structure
 
@@ -17,9 +17,17 @@ tests/
 │   ├── services/         # Service tests
 │   │   ├── aiService.test.ts
 │   │   └── emailService.test.ts
+│   ├── frontend/         # Frontend component tests
+│   │   ├── Avatar.test.tsx
+│   │   ├── Button.test.tsx
+│   │   ├── ChatHeader.test.tsx
+│   │   ├── ConversationAnalytics.test.tsx
+│   │   ├── Input.test.tsx
+│   │   ├── MessageInput.test.tsx
+│   │   ├── MessageList.test.tsx
+│   │   └── Sidebar.test.tsx
 │   ├── integration/      # Integration tests
-│   │   ├── app.test.ts
-│   │   └── pglite-setup.test.ts
+│   │   └── app.test.ts
 │   ├── utils/            # Test utilities
 │   │   ├── testUtils.ts
 │   │   └── pgliteTestUtils.ts
@@ -35,7 +43,9 @@ tests/
 
 ## Test Coverage
 
-### Authentication Routes (`auth.test.ts`)
+### Backend Tests
+
+#### Authentication Routes (`auth.test.ts`)
 
 - User registration with validation
 - User login with credential verification
@@ -45,7 +55,7 @@ tests/
 - Error handling for invalid credentials
 - Password hashing verification
 
-### Conversation Routes (`conversations.test.ts`)
+#### Conversation Routes (`conversations.test.ts`)
 
 - Direct chat creation between users
 - Group chat creation with multiple members
@@ -56,7 +66,7 @@ tests/
 - Conversation read status management
 - Error handling for invalid operations
 
-### Message Routes (`messages.test.ts`)
+#### Message Routes (`messages.test.ts`)
 
 - Message retrieval with pagination
 - Message analytics and statistics
@@ -65,7 +75,7 @@ tests/
 - Conversation summarization
 - Error handling for message operations
 
-### Invitation Routes (`invitations.test.ts`)
+#### Invitation Routes (`invitations.test.ts`)
 
 - Group invitation sending
 - Invitation token validation
@@ -73,7 +83,7 @@ tests/
 - Permission checking for group creators
 - Error handling for invalid invitations
 
-### Authentication Middleware (`auth.test.ts`)
+#### Authentication Middleware (`auth.test.ts`)
 
 - JWT token validation
 - Cookie-based authentication
@@ -82,7 +92,7 @@ tests/
 - Admin role verification
 - Error responses for invalid tokens
 
-### AI Service (`aiService.test.ts`)
+#### AI Service (`aiService.test.ts`)
 
 - Grammar correction functionality
 - Reply suggestion generation
@@ -91,14 +101,14 @@ tests/
 - OpenAI API integration
 - Error handling for API failures
 
-### Email Service (`emailService.test.ts`)
+#### Email Service (`emailService.test.ts`)
 
 - Group invitation email sending
 - Invitation token generation and validation
 - Token expiration handling
 - Error handling for invalid tokens
 
-### Integration Tests (`app.test.ts`)
+#### Integration Tests (`app.test.ts`)
 
 - Complete user workflows
 - End-to-end API testing
@@ -106,12 +116,47 @@ tests/
 - CORS configuration
 - Error handling across the application
 
-### PGlite Database Tests (`pglite-setup.test.ts`)
+### Frontend Tests
+
+#### Component Tests
+
+- **Avatar.test.tsx**: Avatar component rendering and props
+- **Button.test.tsx**: Button component interactions and states
+- **ChatHeader.test.tsx**: Chat header functionality and user info
+- **ConversationAnalytics.test.tsx**: Analytics charts and data display
+- **Input.test.tsx**: Input component validation and events
+- **MessageInput.test.tsx**: Message input functionality and AI features
+- **MessageList.test.tsx**: Message list rendering and interactions
+- **Sidebar.test.tsx**: Sidebar navigation and conversation list
+
+### PGlite Database Tests
 
 - Database initialization and setup
 - Test data creation and cleanup
 - Database reset functionality
 - Prisma client integration with pglite
+
+## Database Schema
+
+### Test Schema vs Production Schema
+
+The test schema (`tests/prisma/schema.prisma`) is a simplified version of the main schema (`backend/prisma/schema.prisma`) designed for testing purposes:
+
+#### Key Differences:
+
+1. **Named Relations**: The test schema uses default relation names instead of explicit named relations
+2. **Cascade Rules**: The test schema doesn't include `onDelete` cascade rules
+3. **AI Features**: The test schema doesn't include the `isAISuggestion` field
+4. **PGlite Compatibility**: The test schema is optimized for PGlite's simplified PostgreSQL implementation
+
+#### Why Simplified?
+
+- **Performance**: Faster test execution with simplified relations
+- **Compatibility**: Better compatibility with PGlite's lightweight PostgreSQL
+- **Isolation**: Reduced complexity for isolated testing
+- **Maintenance**: Easier to maintain test-specific schema changes
+
+The test schema maintains all core functionality while being optimized for the testing environment.
 
 ## Prerequisites
 
@@ -133,7 +178,7 @@ TEST_REDIS_URL="redis://localhost:6379/1"
 JWT_SECRET="test-jwt-secret-key-for-testing-only"
 
 # OpenAI API Key (for AI service tests)
-OPENAI_KEY="test-openai-key"
+OPENAI_API_KEY="test-openai-key"
 ```
 
 ## Database Setup
@@ -184,6 +229,16 @@ npm run test:frontend
 npm run test:backend
 ```
 
+### Cleanup
+
+```bash
+# Clean up test database files
+npm run cleanup:db
+
+# Full cleanup including cache
+npm run cleanup:all
+```
+
 ## Test Utilities
 
 The test utilities provide helper functions for:
@@ -225,6 +280,13 @@ The test utilities provide helper functions for:
 - Redis mocking for caching tests
 - External service isolation
 
+### Frontend Testing
+
+- React Testing Library for component testing
+- Jest DOM for DOM testing utilities
+- User event simulation for interactions
+- Component isolation and mocking
+
 ## Troubleshooting
 
 ### Common Issues
@@ -232,6 +294,7 @@ The test utilities provide helper functions for:
 1. **PGlite initialization errors**: Ensure you have the latest version of pglite installed
 2. **Test timeout errors**: Increase Jest timeout in setup files if needed
 3. **Memory issues**: Tests automatically clean up database files, but you can manually delete `test-db-*.db` files if needed
+4. **Frontend test failures**: Ensure all required dependencies are installed
 
 ### Debug Mode
 
@@ -249,27 +312,38 @@ To inspect the database during tests, you can modify `pgliteTestUtils.ts` to log
 console.log("Test database path:", dbPath);
 ```
 
+### Frontend Test Debugging
+
+For frontend component tests:
+
+```bash
+# Run specific component test
+npm test -- Avatar.test.tsx
+
+# Run with coverage for specific component
+npm test -- Avatar.test.tsx --coverage
+```
+
 ## Continuous Integration
 
 The tests are designed to run in CI/CD pipelines. Ensure your CI environment has:
 
-- PostgreSQL service
-- Redis service
 - Node.js runtime
 - Proper environment variables
+- Sufficient memory for PGlite operations
 
 Example GitHub Actions configuration:
 
 ```yaml
-- name: Run Backend Tests
+- name: Run Tests
   run: |
-    cd tests/backend
+    cd tests
     npm install
     npm test
   env:
-    TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
     TEST_REDIS_URL: ${{ secrets.TEST_REDIS_URL }}
     JWT_SECRET: ${{ secrets.JWT_SECRET }}
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```
 
 ## Contributing
@@ -282,6 +356,7 @@ When adding new tests:
 4. Update this README if adding new test categories
 5. Ensure tests are isolated and don't depend on each other
 6. Add integration tests for new features
+7. For frontend components, test both happy path and error scenarios
 
 ## Coverage Goals
 
@@ -295,3 +370,25 @@ Run coverage report to check current coverage:
 ```bash
 npm run test:coverage
 ```
+
+## Test Best Practices
+
+### Backend Tests
+
+1. **Use PGlite**: Leverage the lightweight database for fast, isolated tests
+2. **Mock External Services**: Mock OpenAI API and Redis for reliable tests
+3. **Test Error Scenarios**: Include tests for error conditions and edge cases
+4. **Use Test Utilities**: Leverage the provided test utilities for common operations
+
+### Frontend Tests
+
+1. **Test User Interactions**: Use `@testing-library/user-event` for realistic user interactions
+2. **Test Component Props**: Verify components handle different prop combinations correctly
+3. **Test Error States**: Ensure components handle errors gracefully
+4. **Mock External Dependencies**: Mock API calls and WebSocket connections
+
+### Integration Tests
+
+1. **Test Complete Workflows**: Test end-to-end user journeys
+2. **Verify API Contracts**: Ensure frontend and backend work together correctly
+3. **Test Real-time Features**: Verify WebSocket functionality works as expected
