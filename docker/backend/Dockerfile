@@ -7,10 +7,6 @@ RUN apk add --no-cache python3 make g++ curl
 # Set working directory
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
 # Copy package files and Prisma schema
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
@@ -28,12 +24,10 @@ WORKDIR /app
 
 # Copy node_modules from base
 COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/prisma ./prisma
 
 # Copy source code
 COPY backend/ .
-
-# Fix permissions
-RUN chown -R nodejs:nodejs /app
 
 # Expose port
 EXPOSE 3001
@@ -61,6 +55,10 @@ RUN npm run build
 
 # Remove dev dependencies
 RUN npm prune --production
+
+# Create non-root user for production
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
 # Fix ownership and drop to non-root
 RUN chown -R nodejs:nodejs /app

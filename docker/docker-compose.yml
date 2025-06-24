@@ -59,10 +59,10 @@ services:
     build:
       context: ..
       dockerfile: docker/backend/Dockerfile
-      target: development # Use development stage for dev environment
+      target: development
     container_name: chatcraftai-backend
     env_file:
-      - ../backend/.env.docker
+      - ../backend/.env
     environment:
       NODE_ENV: development
       REDIS_URL: redis://redis:6379
@@ -93,10 +93,10 @@ services:
     build:
       context: ../frontend
       dockerfile: ../docker/frontend/Dockerfile
-      target: development # Use development stage for dev environment
+      target: development
     container_name: chatcraftai-frontend
     env_file:
-      - ../frontend/.env.local
+      - ../frontend/.env
     environment:
       NODE_ENV: development
       NEXT_PUBLIC_API_URL: http://localhost:3001/api
@@ -134,7 +134,7 @@ services:
       - backend
     networks:
       - chatcraftai-network
-    profiles: ["production"] # Only start in production
+    profiles: ["production"]
     restart: unless-stopped
     deploy:
       resources:

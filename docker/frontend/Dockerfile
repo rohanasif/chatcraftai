@@ -26,7 +26,7 @@ COPY . .
 # Expose dev port
 EXPOSE 3000
 
-# Start Next.js in dev mode (Turbopack for faster HMR)
+# Start Next.js in dev mode
 CMD ["npm", "run", "dev"]
 
 # Production stage
@@ -42,6 +42,14 @@ COPY . .
 
 # Build the application
 RUN npm run build
+
+# Create non-root user for production
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Fix ownership and drop to non-root
+RUN chown -R nodejs:nodejs /app
+USER nodejs
 
 # Expose port
 EXPOSE 3000
