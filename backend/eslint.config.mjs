@@ -9,6 +9,17 @@ import eslintConfigPrettier from "eslint-config-prettier";
 
 export default defineConfig([
   {
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "*.min.js",
+      "coverage/**",
+      ".next/**",
+      "build/**",
+      "package-lock.json",
+    ],
+  },
+  {
     files: ["**/*.{js,mjs,cjs,ts,mts,cts}"],
     plugins: { js },
     extends: ["js/recommended"],
@@ -33,18 +44,21 @@ export default defineConfig([
   },
   {
     files: ["**/*.json"],
+    ignores: ["package-lock.json"],
     plugins: { json },
     language: "json/json",
     extends: ["json/recommended"],
   },
   {
     files: ["**/*.jsonc"],
+    ignores: ["package-lock.json"],
     plugins: { json },
     language: "json/jsonc",
     extends: ["json/recommended"],
   },
   {
     files: ["**/*.json5"],
+    ignores: ["package-lock.json"],
     plugins: { json },
     language: "json/json5",
     extends: ["json/recommended"],

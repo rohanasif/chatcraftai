@@ -192,7 +192,7 @@ NODE_ENV=development
 FRONTEND_URL="http://localhost:3000"
 ```
 
-#### Frontend (.env.local)
+#### Frontend (.env)
 
 ```env
 NEXT_PUBLIC_API_URL="http://localhost:3001/api"
@@ -213,7 +213,7 @@ NEXT_PUBLIC_WS_URL="ws://localhost:3001"
    ```bash
    # Create and edit the environment files
    nano backend/.env
-   nano frontend/.env.local
+   nano frontend/.env
    # Add your configuration values to these files
    ```
 

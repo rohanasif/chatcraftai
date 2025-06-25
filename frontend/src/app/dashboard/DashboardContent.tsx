@@ -149,7 +149,7 @@ export default function DashboardContent() {
                 });
 
                 // Update analytics in real time when new message is received
-                if (showAnalyticsRef.current) {
+                if (showAnalyticsRef.current && message.conversationId) {
                   loadAnalytics(message.conversationId);
                 }
               }
