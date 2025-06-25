@@ -191,14 +191,6 @@ export default function LoginPage() {
                     "& .MuiFormControlLabel-label": { fontSize: "0.875rem" },
                   }}
                 />
-                <MuiLink
-                  component={Link}
-                  href="/auth/forgot-password"
-                  variant="body2"
-                  sx={{ fontWeight: 500 }}
-                >
-                  Forgot password?
-                </MuiLink>
               </Box>
 
               <Button

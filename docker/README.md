@@ -197,7 +197,7 @@ FRONTEND_URL=http://localhost:3000
 PORT=3001
 ```
 
-### Frontend (.env.local)
+### Frontend (.env)
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001/api
@@ -287,7 +287,7 @@ OPENAI_API_KEY=your_openai_api_key
 FRONTEND_URL=https://yourdomain.com
 PORT=3001
 
-# Frontend (.env.local)
+# Frontend (.env)
 NEXT_PUBLIC_API_URL=https://yourdomain.com/api
 NEXT_PUBLIC_WS_URL=wss://yourdomain.com
 ```
@@ -341,7 +341,7 @@ FRONTEND_URL=http://localhost:3000
 PORT=3001
 ```
 
-#### Frontend (.env.local)
+#### Frontend (.env)
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001/api
