@@ -8,6 +8,7 @@ RUN apk add --no-cache python3 make g++ curl
 WORKDIR /app
 
 # Copy package files and Prisma schema
+# Handle both build contexts: project root (..) and backend directory (../backend)
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
 
@@ -46,9 +47,13 @@ WORKDIR /app
 
 # Copy node_modules from base
 COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/prisma ./prisma
 
 # Copy source code
 COPY backend/ .
+
+# Set production environment
+ENV NODE_ENV=production
 
 # Build app
 RUN npm run build
@@ -61,7 +66,10 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
 # Fix ownership and drop to non-root
-RUN chown -R nodejs:nodejs /app
+RUN chown -R nodejs:nodejs /app && \
+    chmod -R 755 /app
+
+# Switch to non-root user
 USER nodejs
 
 # Expose port

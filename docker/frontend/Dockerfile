@@ -40,6 +40,12 @@ COPY --from=base /app/node_modules ./node_modules
 # Copy source code
 COPY . .
 
+# Set production environment
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_API_URL=/api
+ENV NEXT_PUBLIC_WS_URL=ws://localhost/ws
+
 # Build the application
 RUN npm run build
 
@@ -48,7 +54,10 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
 # Fix ownership and drop to non-root
-RUN chown -R nodejs:nodejs /app
+RUN chown -R nodejs:nodejs /app && \
+    chmod -R 755 /app
+
+# Switch to non-root user
 USER nodejs
 
 # Expose port

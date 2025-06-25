@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # PostgreSQL Database
   postgres:
@@ -14,7 +12,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - chatcraftai-network
     healthcheck:
@@ -24,6 +21,8 @@ services:
       retries: 3
       start_period: 60s
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
@@ -50,6 +49,8 @@ services:
       retries: 3
       start_period: 30s
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
@@ -60,8 +61,8 @@ services:
   # Backend API (Node.js + Prisma)
   backend:
     build:
-      context: ../backend
-      dockerfile: ../docker/backend/Dockerfile
+      context: ..
+      dockerfile: docker/backend/Dockerfile
       target: production # Use production stage
     container_name: chatcraftai-backend-prod
     env_file:
@@ -80,6 +81,12 @@ services:
     networks:
       - chatcraftai-network
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
@@ -94,12 +101,10 @@ services:
       dockerfile: ../docker/frontend/Dockerfile
       target: production # Use production stage
     container_name: chatcraftai-frontend-prod
-    env_file:
-      - ../frontend/.env.local
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: /api
-      NEXT_PUBLIC_WS_URL: ws://localhost
+      NEXT_PUBLIC_WS_URL: ws://localhost/ws
     expose:
       - "3000"
     depends_on:
@@ -107,6 +112,12 @@ services:
     networks:
       - chatcraftai-network
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
@@ -130,6 +141,13 @@ services:
     networks:
       - chatcraftai-network
     restart: unless-stopped
+    tmpfs:
+      - /tmp
+      - /var/tmp
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:

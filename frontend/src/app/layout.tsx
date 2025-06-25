@@ -1,21 +1,24 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "../contexts/AuthContext";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "../components/providers/ThemeProvider";
 
-const geistSans = Geist({
+// Geist Sans
+const geistSans = localFont({
+  src: "../fonts/Geist-VariableFont_wght.ttf",
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
+// Geist Mono
+const geistMono = localFont({
+  src: "../fonts/GeistMono-VariableFont_wght.ttf",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
 });
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "ChatCraftAI - Real-time AI-augmented messaging",
   description:
     "A real-time, AI-augmented messaging platform with grammar correction, reply suggestions, and analytics.",
@@ -23,9 +26,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
       <body
