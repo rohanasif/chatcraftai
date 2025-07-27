@@ -16,29 +16,7 @@ RUN npx prisma generate
 # Compile TypeScript
 RUN npm run build
 
-# Stage 2: Production
-FROM node:20-alpine AS production
-
-WORKDIR /app
-
-# Copy necessary files
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
-
-# Install Prisma CLI globally for migration
-RUN npm install -g prisma
-
-# Set environment
-ENV NODE_ENV=production
-
-EXPOSE 3000
-
-# Run migrations and start server
-CMD prisma migrate deploy && node dist/server.js
-
-# Stage 3: Development
+# Stage 2: Development
 FROM node:20-alpine AS development
 
 WORKDIR /app
@@ -62,4 +40,28 @@ ENV NODE_ENV=development
 EXPOSE 3000
 
 # Use nodemon for hot-reloading in development
-CMD ["nodemon"]
+CMD ["npm", "start"]
+
+# Stage 3: Production
+FROM node:20-alpine AS production
+
+WORKDIR /app
+
+# Copy necessary files
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+
+# Install Prisma CLI globally for migration
+RUN npm install -g prisma
+
+# Set environment
+ENV NODE_ENV=production
+
+EXPOSE 3000
+
+# Run migrations and start server
+CMD prisma migrate deploy && node dist/server.js
+
+
