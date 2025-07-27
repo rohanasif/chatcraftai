@@ -1,75 +1,42 @@
-# Multi-stage build for better optimization
-FROM node:20-alpine AS base
+# Stage 1: Build
+FROM node:20-alpine AS builder
 
-# Install system dependencies
-RUN apk add --no-cache python3 make g++ curl
-
-# Set working directory
 WORKDIR /app
 
-# Copy package files and Prisma schema
-# Handle both build contexts: project root (..) and backend directory (../backend)
-COPY backend/package*.json ./
-COPY backend/prisma ./prisma/
+# Install dependencies
+COPY package*.json ./
+RUN npm install
 
-# Install all dependencies
-RUN npm ci
+# Copy source files
+COPY . .
 
 # Generate Prisma client
 RUN npx prisma generate
 
-# Development stage
-FROM base AS development
-
-WORKDIR /app
-
-# Copy node_modules from base
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/prisma ./prisma
-
-# Copy source code
-COPY backend/ .
-
-# Expose port
-EXPOSE 3001
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3001/health || exit 1
-
-# Start dev server
-CMD ["npm", "run", "dev"]
-
-# Production stage
-FROM base AS production
-
-WORKDIR /app
-
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/prisma ./prisma
-COPY backend/ .
-
-ENV NODE_ENV=production
-
-# Build app
+# Compile TypeScript
 RUN npm run build
 
-# Apply Prisma migrations
-RUN npx prisma migrate deploy
+# Stage 2: Production
+FROM node:20-alpine AS production
 
-# Remove dev dependencies
-RUN npm prune --production
+WORKDIR /app
 
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-RUN chown -R nodejs:nodejs /app && chmod -R 755 /app
+# Copy only what's needed
+COPY --from=builder /app/package*.json ./
+RUN npm install --omit=dev
 
-USER nodejs
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules ./node_modules
 
-EXPOSE 3001
+# Install Prisma CLI for deploy
+RUN npm install -g prisma
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3001/health || exit 1
+# Set environment
+ENV NODE_ENV=production
 
-# ✅ Start your backend server
-CMD ["npm", "start"]
+# Expose app port
+EXPOSE 3000
+
+# Start with migration + app
+CMD prisma migrate deploy && node dist/server.js
