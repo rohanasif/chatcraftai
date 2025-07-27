@@ -62,4 +62,4 @@ ENV NODE_ENV=development
 EXPOSE 3000
 
 # Use nodemon for hot-reloading in development
-CMD ["nodemon", "--watch", "src", "--ext", "ts,json", "--exec", "ts-node", "src/server.ts"]
+CMD ["nodemon"]
