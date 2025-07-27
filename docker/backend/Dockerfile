@@ -3,12 +3,12 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
-COPY package*.json ./
+# Copy backend package files
+COPY backend/package*.json ./
 RUN npm install
 
-# Copy source files
-COPY . .
+# Copy backend source code
+COPY backend/ .
 
 # Generate Prisma client
 RUN npx prisma generate
@@ -21,22 +21,19 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Copy only what's needed
+# Copy necessary files
 COPY --from=builder /app/package*.json ./
-RUN npm install --omit=dev
-
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules ./node_modules
 
-# Install Prisma CLI for deploy
+# Install Prisma CLI globally for migration
 RUN npm install -g prisma
 
 # Set environment
 ENV NODE_ENV=production
 
-# Expose app port
 EXPOSE 3000
 
-# Start with migration + app
+# Run migrations and start server
 CMD prisma migrate deploy && node dist/server.js
