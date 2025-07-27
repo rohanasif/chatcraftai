@@ -7,6 +7,9 @@ export function middleware(request: NextRequest) {
   // Get the token from cookies
   const token = request.cookies.get("token")?.value;
 
+  console.log(token);
+  console.log(pathname);
+
   // Handle root path redirects
   if (pathname === "/") {
     if (token) {
