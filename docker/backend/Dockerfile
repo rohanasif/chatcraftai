@@ -45,39 +45,31 @@ FROM base AS production
 
 WORKDIR /app
 
-# Copy node_modules from base
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/prisma ./prisma
-
-# Copy source code
 COPY backend/ .
 
-# Set production environment
 ENV NODE_ENV=production
 
 # Build app
 RUN npm run build
 
+# Apply Prisma migrations
+RUN npx prisma migrate deploy
+
 # Remove dev dependencies
 RUN npm prune --production
 
-# Create non-root user for production
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
+RUN chown -R nodejs:nodejs /app && chmod -R 755 /app
 
-# Fix ownership and drop to non-root
-RUN chown -R nodejs:nodejs /app && \
-    chmod -R 755 /app
-
-# Switch to non-root user
 USER nodejs
 
-# Expose port
 EXPOSE 3001
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
-# Start app
-CMD ["npx", "prisma", "migrate", "deploy"]
+# ✅ Start your backend server
+CMD ["npm", "start"]
