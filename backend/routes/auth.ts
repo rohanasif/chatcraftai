@@ -56,7 +56,13 @@ const registerHandler = async (req, res) => {
       expiresIn: "1h",
     });
 
-    res.cookie("token", token, { httpOnly: true });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // HTTPS-only in prod
+      sameSite: "lax",
+      path: "/", // 👈 makes it available site-wide
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+    });
     res.json({ user });
   } catch (error) {
     console.error("Registration error:", error);
@@ -110,7 +116,13 @@ const loginHandler = async (req, res) => {
     expiresIn: "1h",
   });
 
-  res.cookie("token", token, { httpOnly: true });
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", // HTTPS-only in prod
+    sameSite: "lax",
+    path: "/", // 👈 makes it available site-wide
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+  });
   res.json({
     user: {
       id: user.id,
