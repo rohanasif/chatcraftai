@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import type React from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { User } from "../types";
+import type { User } from "../types";
 import { apiService } from "../services/api";
 import { wsService } from "../services/websocket";
 
@@ -86,8 +87,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Reset WebSocket service for new connection
       wsService.resetForLogin();
       setUser(response.user);
-      // Navigate to root and let middleware handle redirect
-      router.push("/");
+
+      router.push("/dashboard");
     } catch (error) {
       console.error("Login failed:", error);
       throw error;
@@ -108,8 +109,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         avatar,
       });
       setUser(response.user);
-      // Navigate to root and let middleware handle redirect
-      router.push("/");
+
+      // Direct redirect to dashboard instead of relying on middleware
+      router.push("/dashboard");
     } catch (error) {
       console.error("Registration failed:", error);
       throw error;

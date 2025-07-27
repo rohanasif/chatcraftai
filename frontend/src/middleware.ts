@@ -19,17 +19,21 @@ export function middleware(request: NextRequest) {
   }
 
   // Handle dashboard access (protected route)
-  if (pathname.startsWith("/dashboard") && !token) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
+  if (pathname.startsWith("/dashboard")) {
+    if (!token) {
+      return NextResponse.redirect(new URL("/auth/login", request.url));
+    }
+    // Allow access to dashboard if token exists
+    return NextResponse.next();
   }
 
   // Handle auth pages when user is already logged in
-  if (
-    (pathname.startsWith("/auth/login") ||
-      pathname.startsWith("/auth/register")) &&
-    token
-  ) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  if (pathname.startsWith("/auth/")) {
+    if (token) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+    // Allow access to auth pages if no token
+    return NextResponse.next();
   }
 
   return NextResponse.next();
